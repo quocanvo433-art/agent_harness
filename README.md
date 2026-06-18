@@ -3,14 +3,18 @@
 > **Môi trường phát triển AI-driven cho dự án Hermes.**
 > Đây là hệ thống điều phối các AI Coding Agent, định nghĩa roles, workflow, harness kiểm tra chất lượng,
 > và cơ chế nạp ngữ cảnh tự động (live context) cho toàn bộ vòng đời phát triển dự án.
+>
+> 💡 **Tuyên ngôn dự án:** Tác giả dự án là một non-tech hoàn toàn không viết một dòng code nào. Đây là dự án tham vọng chứng minh rằng một mạng lưới Agent tự trị (Agentic Swarm) có thể tự lực gánh vác việc phát triển toàn bộ một sản phẩm phức tạp nếu được vận hành trong một hệ thống chốt chặn và khung kiểm thử (Harness) phù hợp.
 
 | Metadata | Value |
 |---|---|
 | Version | `2.0.0` |
 | Status | `ACTIVE` |
 | Project | Hermes FacePost-Group |
+| Creator | Non-Tech (0-line coding author, swarm-driven) |
 | Spec Anchor | `facepost_00_shared_types.md` (Single Source of Truth) |
 | Date | 2026-06-18 |
+
 
 ---
 
