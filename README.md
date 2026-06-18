@@ -231,5 +231,22 @@ agent_harness/
 
 ---
 
+## 🔄 Tái Sử Dụng & Tinh Chỉnh Cho Dự Án Khác (Portability Guide)
+
+Bộ Harness này được thiết kế theo triết lý **tách rời cấu hình và logic vận hành (Decoupled Design)**, giúp anh dễ dàng áp dụng nó vào bất kỳ dự án phát triển phần mềm nào khác trong tương lai:
+
+### 1. Quy trình 3 bước chuyển đổi sang dự án mới:
+1. **Ánh xạ codebase (`context_map.json`):** Khai báo các file mã nguồn của dự án mới tương ứng với các file spec thiết kế tương ứng.
+2. **Cập nhật Roadmap & Tasks (`context_dispatcher.py`):** Sửa cấu hình tuần (`WEEK_CONFIGS`) ở đầu file để định nghĩa lại lộ trình các tuần, QA Gates và danh sách các task mặc định của dự án mới.
+3. **Định nghĩa luật chơi của AI (`roles/` và `AGENTS.md`):** Điều chỉnh lại mô tả công việc của Lead Architect, Coding Agents, QA, Auditor phù hợp với công nghệ của dự án mới (ví dụ: Rust ECS, Python, Go, AWS security...).
+
+### 2. Các giá trị cốt lõi được giữ lại nguyên vẹn:
+- **Cơ chế Cưỡng bức nạp context (Forced Hydration):** Nạp đúng tài liệu thiết kế vào live context của AI trước mỗi task phát triển.
+- **Nén & Lưu trữ Spec (Context Archiving):** Tự động dọn dẹp các Spec đã hoàn thành thành Anchor Summary siêu nhẹ để giải phóng bộ nhớ context window cho AI.
+- **Thư ký HOTZONE:** Quản lý tiến độ task, tính phần trăm %, vẽ thanh tiến độ và rollover sang tuần mới hoàn toàn tự động trên progress tracker.
+
+---
+
 *Hermes FacePost-Group — Agent Harness v1.0.0*
 *Xem `workflow/4step_assembly.md` để biết chi tiết vận hành.*
+
