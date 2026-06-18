@@ -6,7 +6,7 @@ Tài liệu này quy trình hóa phương pháp đặt câu hỏi phản biện 
 
 ## 📌 PHẦN I: TRIẾT LÝ "BẺ KHÓA RANH GIỚI" (THE SYSTEMIC BOUNDARY PHILOSOPHY)
 
-Khi nhận một prompt ngắn từ Lão Công (Ví dụ: *"Viết phần mềm Windows + Chrome Extension đăng bài Facebook né checkpoint dùng AI"*), một LLM thông thường chỉ tạo ra 3-4 tài liệu đặc tả sơ sài vì nó bị giới hạn trong **"Tư duy bề mặt" (Surface Thinking)**. Nó chỉ nghĩ đến những gì người dùng nhìn thấy trực tiếp (UI, Database cơ bản, nút bấm).
+Khi nhận một prompt ngắn từ Người dùng (Ví dụ: *"Viết phần mềm Windows + Chrome Extension đăng bài Facebook né checkpoint dùng AI"*), một LLM thông thường chỉ tạo ra 3-4 tài liệu đặc tả sơ sài vì nó bị giới hạn trong **"Tư duy bề mặt" (Surface Thinking)**. Nó chỉ nghĩ đến những gì người dùng nhìn thấy trực tiếp (UI, Database cơ bản, nút bấm).
 
 Để mở rộng ra **11 phân hệ chi tiết**, chúng ta phải ép AI tư duy qua **3 Tầng Ranh Giới (Three Boundary Layers)**:
 
@@ -36,7 +36,7 @@ graph TD
 
 ## 🔄 PHẦN II: QUY TRÌNH 4 BƯỚC THỰC THI (THE 4-STEP PROTOCOL)
 
-Để áp dụng cẩm nang này cho bất kỳ ý tưởng mới nào, Lão Công hãy thực hiện theo 4 bước sau:
+Để áp dụng cẩm nang này cho bất kỳ ý tưởng mới nào, hãy thực hiện theo 4 bước sau:
 
 *   **Bước 1 (Idea Deconstruction):** Bóc tách ý tưởng thô thành các từ khóa về: Nền tảng (Platform), Đối tượng tương tác (Target), Yêu cầu an toàn/Chống chặn (Security/Anti-detection), và Khâu tích hợp AI (AI Role).
 *   **Bước 2 (Subagents Activation):** Chạy 11 Subagents tương ứng dưới đây. Mỗi Subagent nhận ý tưởng thô và bộ câu hỏi tương ứng để tự động sinh ra bản thảo spec của phân hệ đó.
@@ -261,10 +261,10 @@ Dưới đây là 11 bộ câu hỏi (prompts) chi tiết và tổng quát nhấ
 
 ## 🛠️ PHẦN IV: HƯỚNG DẪN ÁP DỤNG THỰC TẾ (HOW TO DEPLOY PROMPTS)
 
-Khi Lão Công muốn sinh specs cho một dự án mới (Ví dụ: *"Hệ thống tự động cào tin tức bằng AI, phân tích tâm lý đám đông và gửi tín hiệu trade coin qua Telegram"*), Lão Công hãy copy đoạn lệnh sau và gửi cho LLM:
+Khi muốn sinh specs cho một dự án mới (Ví dụ: *"Hệ thống tự động cào tin tức bằng AI, phân tích tâm lý đám đông và gửi tín hiệu trade coin qua Telegram"*), hãy copy đoạn lệnh sau và gửi cho LLM:
 
 > ### 📝 MASTER PROMPT KHỞI CHẠY SINH SPECS
-> *"Tao muốn xây dựng một dự án có ý tưởng thô như sau: **[MÔ TẢ Ý TƯỞNG THÔ CỦA ANH VÀO ĐÂY]**.*
+> *"Tao muốn xây dựng một dự án có ý tưởng thô như sau: **[MÔ TẢ Ý TƯỞNG THÔ VÀO ĐÂY]**.*
 >
 > *Hãy đóng vai trò là một Kiến trúc sư Hệ thống và Tổng điều phối Swarm. Sử dụng tài liệu **11-Spec Generation Blueprint** để bóc tách ý tưởng này thành 11 tài liệu đặc tả kỹ thuật chi tiết.*
 >

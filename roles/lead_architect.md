@@ -7,7 +7,7 @@
 | Role Name | `lead_architect` |
 | Purpose | Phân tích yêu cầu, map sang specs, tạo Coding Tickets cho Feature Agents; quản lý context compression và điều tiết context window sau mỗi QA checkpoint tuần |
 | Quyền hạn | Read-only trên toàn bộ specs; tạo Coding Tickets; KHÔNG sửa code |
-| Escalation target | User (Lão Công) — khi gặp ambiguity trong spec |
+| Escalation target | User (Người dùng) — khi gặp ambiguity trong spec |
 
 ---
 
@@ -229,7 +229,7 @@ graph TD
 3. **Task span qua 2+ modules** → Yêu cầu làm rõ ranh giới
 4. **Anti-pattern mới chưa có trong registry** → Đề xuất thêm, chờ user approve
 5. **Spec dùng từ ngữ chưa rõ** (VD: "handle gracefully") → Hỏi cụ thể là handle như thế nào
-6. **Lỗi UI không thể khắc phục bằng DOM:** Vision AI liên tục báo cáo giao diện bị hỏng (vỡ layout nặng, không nhận diện được vùng text) do Facebook cập nhật giao diện diện rộng -> Dừng luồng, ném ảnh màn hình và báo cáo khẩn cấp cho User (Lão Công) kiểm tra bằng mắt người.
+6. **Lỗi UI không thể khắc phục bằng DOM:** Vision AI liên tục báo cáo giao diện bị hỏng (vỡ layout nặng, không nhận diện được vùng text) do Facebook cập nhật giao diện diện rộng -> Dừng luồng, ném ảnh màn hình và báo cáo khẩn cấp cho User (Người dùng) kiểm tra bằng mắt người.
 
 ---
 

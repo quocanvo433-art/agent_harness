@@ -28,7 +28,7 @@ Mỗi Coding Agent **chỉ được đọc**:
 
 ### ⚠️ Nghiêm Cấm Bypass IDE & Tự Động Ghi Đè Code Trực Tiếp (IDE Bypass Ban)
 - **Ranh giới thực thi:** Coding Agents tuyệt đối không được tự ý thực thi các lệnh Terminal/Tool tự động (như script python, bash, sed, hoặc các công cụ tự động áp dụng giải pháp khác...) để ghi đè, sửa đổi trực tiếp mã nguồn hoặc các file đặc tả trong dự án.
-- **Quy trình kiểm duyệt bắt buộc:** Mọi chỉnh sửa mã nguồn hoặc tài liệu đặc tả đều phải thông qua giao diện Native IDE bằng các tool `replace_file_content` hoặc `multi_replace_file_content` để Leader (Lão Công) kiểm duyệt trực tiếp qua bảng Render Diff (Accept/Reject từng dòng).
+- **Quy trình kiểm duyệt bắt buộc:** Mọi chỉnh sửa mã nguồn hoặc tài liệu đặc tả đều phải thông qua giao diện Native IDE bằng các tool `replace_file_content` hoặc `multi_replace_file_content` để Leader (Người dùng) kiểm duyệt trực tiếp qua bảng Render Diff (Accept/Reject từng dòng).
 - Mọi hành vi tự ý ghi đè file trực tiếp bỏ qua sự kiểm duyệt của Leader đều bị coi là vi phạm nghiêm trọng và sẽ bị hủy bỏ (REJECTED).
 
 ---
