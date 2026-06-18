@@ -305,3 +305,33 @@ Nhằm đảm bảo tính ổn định tối đa của hệ thống và tránh r
 *   **Cam Kết Không Ném Lỗi Hệ Thống (No-Throw Guarantee):**
     - Toàn bộ tiến trình thực thi của Recovery Loop được bao bọc bởi các khối bắt ngoại lệ (`try-catch`) ở mức nền tảng (Harness level).
     - Mọi lỗi phát sinh trong chính quá trình vận hành của Recovery Agent (ví dụ: mất kết nối WebSocket, lỗi parse JSON, hoặc file bị khóa) sẽ được bắt giữ, ghi lại nhật ký lỗi chi tiết và chuyển đổi trạng thái thành `GRACEFUL_DEGRADATION`. Hệ thống thoát an toàn mà không làm treo hay sập toàn bộ luồng chạy của Harness.
+
+---
+
+## 5. MA TRẬN PHÂN BỔ TRẠNG THÁI KHẨN CẤP (FSM MAINTENANCE PATH)
+
+Hệ thống điều phối Apex Swarm v3.0 vận hành như một Máy trạng thái hữu hạn (FSM) tự phục hồi. Khi gặp sự cố nghiêm trọng, FSM sẽ chuyển sang các trạng thái bảo trì khẩn cấp dựa trên ma trận sau:
+
+| Tình huống khẩn cấp | Trạng thái FSM | Cơ chế tự phục hồi tự động (Self-Repair / Circuit Breaker) |
+|---|---|---|
+| **Lỗi hệ thống nền tảng**<br>(SQLite hỏng / Cạn API Limit / Token expired) | `MAINTENANCE` | 1. Đóng băng (Freeze) toàn bộ các tiến trình AI đang chạy.<br>2. Tự động khôi phục DB từ bản backup stable gần nhất (`db_restore.sh`).<br>3. Xoay vòng (rotate) API Key dự phòng từ Vault an toàn. |
+| **Bế tắc vận hành / Lỗi lặp**<br>(FSM Deadlock / Hotfix liên tục thất bại) | `ESCALATING_LEADER` | 1. Tự động thực hiện rollback mã nguồn của module bị lỗi về Git commit thành công liền trước (`git reset --hard <stable_sha>`).<br>2. Gửi tín hiệu reset trạng thái RAM Tree của context dispatcher.<br>3. Trả lại quyền chỉ đạo cho Lead Architect phân tách lại task. |
+| **Rào cản nghiệp vụ phức tạp**<br>(Sửa thất bại 3 lần / Checkpoint Facebook cần xác thực sinh trắc học hoặc ảnh selfie) | `ESCALATING_HUMAN` | 1. Tạm dừng (Pause) luồng tự động, bảo lưu session trình duyệt.<br>2. Đẩy cảnh báo khẩn cấp và chụp ảnh màn hình visual evidence lên Dashboard.<br>3. Chờ Lão Công (User) nhấn nút duyệt phương án hoặc giải quyết thủ công. |
+
+---
+
+## 6. QUY CHẾ PHÒNG VỆ GIT BRANCH CÔ LẬP (GIT SANDBOX GATE)
+
+Để đảm bảo mã nguồn của dự án chính luôn ở trạng thái sẵn sàng phát hành và không bị ô nhiễm bởi các đoạn code lỗi do AI tự sửa trong quá trình thử nghiệm, hệ thống Apex Swarm v3.0 áp dụng chính sách **Git Sandbox Gate**:
+
+1. **Khởi tạo Sandbox:** Với mỗi `Coding Ticket` được cấp phát từ Lead Architect, hệ thống sẽ tự động tách một nhánh Git cô lập dạng `sandbox/task-<ticket_id>` từ commit stable gần nhất của nhánh chính:
+   ```bash
+   git checkout -b sandbox/task-TICKET-001 <stable_sha>
+   ```
+2. **Thao tác cô lập:** Toàn bộ tiến trình chỉnh sửa file, chạy linter kiểm tra AST tĩnh, áp dụng các khối Search-and-Replace (SAR) và chạy thử nghiệm động E2E đều phải thực thi độc quyền trên nhánh sandbox này.
+3. **Chốt chặn Merge:** Nhánh sandbox chỉ được phép merge vào branch phát triển chính (`main` hoặc `develop`) sau khi nhận được trạng thái `APPROVED` tuyệt đối từ cả Auditor Agent (không còn lỗi `CRITICAL/HIGH`) và QA Evaluator (mọi bài test E2E đều pass).
+4. **Cơ chế Rollback:** Nếu quá trình thử nghiệm thất bại hoặc đạt giới hạn thử lại 3 lần mà không thể sửa được, hệ thống sẽ tự động xóa nhánh sandbox này để trả codebase về trạng thái sạch sẽ ban đầu, ngăn chặn rò rỉ mã nguồn lỗi vào các nhánh chính:
+   ```bash
+   git checkout main
+   git branch -D sandbox/task-TICKET-001
+   ```

@@ -79,10 +79,10 @@ Theo thứ tự ưu tiên:
 > Nếu task mới chưa có spec → Không được giao code → Phải tạo spec trước.
 > Mọi ticket phải có `spec_reference` cụ thể.
 
-### Rule 9: Act on Visual Evidence (Xử lý Bằng Chứng Thị Giác)
-> Khi nhận được `Audit Package` từ QA Agent có chứa `visual_evidence`, Lead Architect bắt buộc phải đọc `vision_ai_analysis`. Nếu lỗi không phải do logic code mà do giao diện bị che đè (Ví dụ: Facebook thay đổi UI thiết kế mới, Pop-up đè lên nút bấm), Architect phải yêu cầu Coding Agent:
-> 1. Đổi chiến thuật từ DOM click sang Human_Simulator click dựa trên tọa độ (`affected_coordinates`).
-> 2. Hoặc viết thêm hàm inject CSS/Script để đóng Pop-up che khuất trước khi tương tác.
+### Rule 9: Act on Visual Evidence & Visual Invariant Enforcement (MỞ RỘNG)
+> Khi nhận được `Audit Package` từ QA Agent có chứa `visual_evidence`, Lead Architect bắt buộc phải đọc `vision_ai_analysis`. 
+> 1. Nếu lỗi không phải do logic code mà do giao diện bị che đè (Ví dụ: Facebook thay đổi UI, Pop-up đè lên nút), Architect phải yêu cầu Coding Agent đổi sang click tọa độ (`affected_coordinates`) bằng `Human_Simulator` hoặc inject script dọn pop-up.
+> 2. **Kiểm duyệt bất biến thị giác (Visual Invariant Enforcement):** Architect phải đối chiếu ảnh chụp giao diện với [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md) hoặc [facepost_01_chrome_extension.md](file:///home/newuser/AI_facepostgroup/specs/facepost_01_chrome_extension.md) để đánh giá xem thay đổi layout có gây xung đột vĩ mô hoặc vỡ cấu trúc giao diện hệ thống tổng thể hay không.
 
 ### Rule 10: Context Compression & Window Regulation
 > Sau mỗi QA checkpoint tuần (hoặc khi kết thúc một chu kỳ kiểm thử), Lead Architect có trách nhiệm:
@@ -113,6 +113,11 @@ Theo thứ tự ưu tiên:
 > 1. Coding Agent PHẢI đọc `🔑 CONTEXT BẮT BUỘC` từ HOTZONE
 > 2. Leader cưỡng bức nạp context bằng cách inject specs vào Coding Ticket `context_files`
 > 3. KHÔNG chờ Coding Agent tự tìm context — Leader chủ động đẩy
+
+### Rule 12: Spec Speculation Engine & Human-in-the-loop Gate (Apex Swarm v3.0)
+> Trước khi chính thức phát hành một `Coding Ticket`, Lead Architect bắt buộc phải chạy luồng suy luận giả lập (Speculation Loop) bằng cách gọi một mô hình LLM giá rẻ (như Gemini Flash) chạy thử bài toán code để dò tìm Spec Gap (điểm mờ đặc tả) hoặc Spec Conflict (mâu thuẫn specs).
+> - **Chốt chặn con người (Human-in-the-loop):** Nếu phát hiện ra Spec Gap, Architect **tuyệt đối không tự ý sửa đổi file Spec gốc** (tránh hiện tượng Spec Drift). Architect phải tạo ra một file đề xuất thay đổi `Spec Change Proposal` và đẩy cảnh báo lên Dashboard.
+> - Tiến trình phát hành ticket sẽ được treo lại cho đến khi Lão Công (User) click duyệt phê duyệt phương án thay đổi Spec.
 
 ---
 

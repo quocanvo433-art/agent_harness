@@ -2,7 +2,7 @@
 
 > **Tuyên ngôn:** Tài liệu này là Hiến pháp chất lượng của dự án. Mọi dòng code vi phạm các Anti-Pattern được định nghĩa dưới đây sẽ bị hệ thống kiểm duyệt tĩnh và Auditor Agent REJECT ngay lập tức.
 
-# 📋 Bảng Tổng Hợp 22 Anti-Patterns
+# 📋 Bảng Tổng Hợp 32 Anti-Patterns
 
 | ID | Severity | Module | Anti-Pattern Name | Detection Hint | Spec Reference |
 |---|---|---|---|---|---|
@@ -23,11 +23,18 @@
 | **AP-15** | `LOW` | Extension | CSS selector hardcode của Facebook | Dùng các class động của FB làm selector chính | [facepost_06_checkpoint_handler.md](file:///home/newuser/AI_facepostgroup/specs/facepost_06_checkpoint_handler.md) |
 | **AP-16** | `LOW` | UI | Fetch keywords trong render loop | Gọi API tải từ khóa trực tiếp trong component render body | [facepost_08_content_engine.md](file:///home/newuser/AI_facepostgroup/specs/facepost_08_content_engine.md) |
 | **AP-17** | `HIGH` | Agent Loop / Extension | CẤM điều hướng trực tiếp bằng URL (Direct Navigation) liên tục đối với các tài khoản mới hoặc tài khoản có độ Trust thấp | Dò tìm xem code có liên tục gọi lệnh `NAVIGATE` hoặc `chrome.tabs.update` trực tiếp tới URL của Facebook Groups mà không thông qua luồng Search-and-Click hay không. | [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md), [facepost_05_agent_loop.md](file:///home/newuser/AI_facepostgroup/specs/facepost_05_agent_loop.md) |
+| **AP-18** | `CRITICAL` | Security / Event Loop | Unsanitized Dynamic RegEx Creation | Khởi tạo `new RegExp()` trực tiếp từ biến đầu vào mà không qua sanitizer | [facepost_08_content_engine.md](file:///home/newuser/AI_facepostgroup/specs/facepost_08_content_engine.md) |
+| **AP-19** | `CRITICAL` | Desktop / Electron | Direct WebContents Leak in Electron | Chuyển tiếp trực tiếp IPC event từ Preload Script sang Renderer process | [facepost_10_desktop_packaging.md](file:///home/newuser/AI_facepostgroup/specs/facepost_10_desktop_packaging.md) |
+| **AP-20** | `CRITICAL` | Backend / Database | Raw DB Imports on UI | Import các module database (`better-sqlite3`, `pg`) trực tiếp trên file frontend `.jsx` | [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md) |
+| **AP-21** | `HIGH` | Stealth / Chrome | WebRTC IP Leakage Exposure | Không tắt UDP non-proxied cho WebRTC trong cấu hình Chrome | [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md) |
+| **AP-22** | `HIGH` | Stealth / Network | SOCKS5 DNS Leakage | Sử dụng proxy dạng `socks5://` thay vì `socks5h://` gây rò rỉ DNS ở local | [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md) |
+| **AP-23** | `HIGH` | Stealth / WebSocket | Static Signature for WebSocket Hello | Gói tin HELLO WebSocket được gửi bằng payload JSON tĩnh, không đổi qua các phiên | [facepost_00_shared_types.md](file:///home/newuser/AI_facepostgroup/specs/facepost_00_shared_types.md) |
+| **AP-24** | `HIGH` | Stealth / Automation | Non-Stealthy Object Protocol Override | Ghi đè các hàm API trình duyệt bằng cách gán biến trần, làm lệch prototype chain | [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md) |
 | **CE-UI-01** | `CRITICAL` | UI / Content Engine | Rò rỉ thông tin đăng nhập DB / Network Credentials trên Frontend | Nhúng trực tiếp connection string hoặc API Key / JWT Secret trong mã nguồn UI | [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md) |
 | **CE-UI-02** | `HIGH` | UI / Content Engine | Rò rỉ dữ liệu qua Log Console ở môi trường Production | Log Cookie, token, cấu hình nhạy cảm ra console | [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md) |
 | **CE-UI-03** | `HIGH` | UI / Content Engine | Rò rỉ kết nối mạng do không giải phóng Listener | EventSource/WebSocket/setInterval không được dọn dẹp khi unmount | [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md) |
 | **CE-UI-04** | `CRITICAL` | UI / Content Engine | Đọc ghi DB trực tiếp từ UI components | Import module database (SQLite/Postgres client) trực tiếp trên file frontend | [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md) |
-| **AP-22** | `CRITICAL` | Security / Secrets | Rò rỉ khóa bí mật và thiếu tệp `.gitignore` | Commit `.env` chứa API Key/Secret, thiếu hoặc không cấu hình `.gitignore` | [facepost_rules_of_project.md](file:///home/newuser/AI_facepostgroup/facepost_rules_of_project.md) |
+| **AP-25** | `CRITICAL` | Security / Secrets | Rò rỉ khóa bí mật và thiếu tệp `.gitignore` | Commit `.env` chứa API Key/Secret, thiếu hoặc không cấu hình `.gitignore` | [facepost_rules_of_project.md](file:///home/newuser/AI_facepostgroup/facepost_rules_of_project.md) |
 
 ---
 
@@ -659,7 +666,193 @@
 
 ---
 
-### AP-22: Rò rỉ khóa bí mật và thiếu tệp `.gitignore` (CRITICAL)
+### AP-18: Unsanitized Dynamic RegEx Creation (CRITICAL)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Khởi tạo biểu thức chính quy động (`new RegExp(variable)`) trực tiếp từ dữ liệu lóng hoặc input do người dùng nhập vào mà không chạy qua hàm escape/sanitize sẽ mở ra lỗ hổng bảo mật nghiêm trọng. Trình duyệt hoặc Backend Node.js có thể bị treo cứng hoàn toàn Event Loop do hiện tượng Catastrophic Backtracking (RegEx DoS / ReDoS) khi gặp các chuỗi input được thiết kế độc hại.
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  const userInput = getRawInput(); // Gây lỗi ReDoS treo CPU nếu nhập "((a+)+)+"
+  const regex = new RegExp(userInput);
+  const isMatch = regex.test(messageContent);
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // Sử dụng hàm escape RegExp chuẩn trước khi khởi tạo
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  const userInput = getRawInput();
+  const regex = new RegExp(escapeRegExp(userInput));
+  const isMatch = regex.test(messageContent);
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector check node `NewExpression` có `callee.name === 'RegExp'` và đối số đầu tiên không phải là một chuỗi literal tĩnh.
+* **Spec Reference:** [facepost_08_content_engine.md](file:///home/newuser/AI_facepostgroup/specs/facepost_08_content_engine.md)
+
+---
+
+### AP-19: Direct WebContents Leak in Electron (CRITICAL)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Trong ứng dụng Electron Desktop, việc chuyển tiếp trực tiếp đối tượng `event` thô của IPC hoặc lộ trực tiếp đối tượng `WebContents` từ Preload Script sang Renderer process sẽ triệt tiêu ranh giới an toàn của IPC. Kẻ tấn công nếu hack được giao diện (Renderer) có thể lợi dụng đối tượng rò rỉ này để thực thi mã độc từ xa (RCE) trên hệ điều hành của người dùng.
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  // preload.js - Rò rỉ đối tượng send thô
+  contextBridge.exposeInMainWorld('electronAPI', {
+    sendRaw: (channel, data) => ipcRenderer.send(channel, data) // Cho phép renderer gửi kênh bất kỳ
+  });
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // preload.js - Chỉ expose các hàm nghiệp vụ cụ thể và an toàn
+  contextBridge.exposeInMainWorld('electronAPI', {
+    toggleStatus: (status) => ipcRenderer.send('toggle-status', status)
+  });
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector phát hiện trong `preload.js` có expose hàm cho phép gọi `ipcRenderer.send` hoặc `ipcRenderer.invoke` với đối số kênh (channel) là một biến động thay vì chuỗi tĩnh.
+* **Spec Reference:** [facepost_10_desktop_packaging.md](file:///home/newuser/AI_facepostgroup/specs/facepost_10_desktop_packaging.md)
+
+---
+
+### AP-20: Raw DB Imports on UI (CRITICAL)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Import trực tiếp các module database (`better-sqlite3`, `pg`, `sequelize`) trong các file frontend React (`.jsx` / `.tsx`) sẽ làm lộ hoàn toàn schema, thông tin kết nối và làm lỗi quá trình đóng gói tài nguyên UI (vì các thư viện native c++ bindings không tương thích với browser). Toàn bộ thao tác đọc/ghi dữ liệu từ UI phải đi qua REST API của Dashboard Backend.
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  // Stats.jsx
+  import db from '../../../backend/database/sqlite_connection'; // CRITICAL VIOLATION
+  export function StatsPanel() {
+    const total = db.prepare('SELECT COUNT(*) as count FROM posts').get().count;
+    return <div>Total: {total}</div>;
+  }
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // Stats.jsx
+  import { useEffect, useState } from 'react';
+  export function StatsPanel() {
+    const [total, setTotal] = useState(0);
+    useEffect(() => {
+      fetch('/api/stats/posts-count')
+        .then(res => res.json())
+        .then(data => setTotal(data.count));
+    }, []);
+    return <div>Total: {total}</div>;
+  }
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector phát hiện câu lệnh `ImportDeclaration` chứa `source.value` khớp với các thư viện database như `better-sqlite3`, `pg`, `sequelize` hoặc liên kết trực tiếp tới file kết nối database backend trong thư mục frontend.
+* **Spec Reference:** [facepost_07_dashboard_ui.md](file:///home/newuser/AI_facepostgroup/specs/facepost_07_dashboard_ui.md)
+
+---
+
+### AP-21: WebRTC IP Leakage Exposure (HIGH)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Mặc định, trình duyệt Chrome cho phép các kết nối WebRTC truy vấn địa chỉ IP cục bộ (local LAN IP) và IP mạng thật của card mạng thông qua các giao thức STUN/TURN, bỏ qua mọi cấu hình proxy của extension. Facebook sử dụng kỹ thuật này để quét địa chỉ IP thật đằng sau proxy của bot. Nếu thiếu cấu hình tắt UDP non-proxied cho WebRTC trong launch options của Chrome, hệ thống sẽ bị rò rỉ IP thật và tài khoản bị gắn cờ spam.
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  // chrome_launcher.js - Khởi chạy Chrome thô không cấu hình WebRTC
+  const browser = await puppeteer.launch({
+    args: ['--proxy-server=http://127.0.0.1:8086']
+  });
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // chrome_launcher.js - Thêm cờ ép WebRTC đi qua proxy
+  const browser = await puppeteer.launch({
+    args: [
+      '--proxy-server=http://127.0.0.1:8086',
+      '--force-webrtc-ip-handling-policy=disable_non_proxied_udp'
+    ]
+  });
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector tìm kiếm các lệnh khởi chạy Puppeteer/Selenium (`puppeteer.launch` hoặc `new Builder()`), xác thực xem trong mảng `args` hoặc `options` có chứa chuỗi `--force-webrtc-ip-handling-policy=disable_non_proxied_udp` hay không.
+* **Spec Reference:** [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md)
+
+---
+
+### AP-22: SOCKS5 DNS Leakage (HIGH)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Sử dụng tiền tố proxy SOCKS5 ở dạng tĩnh `socks5://` sẽ làm rò rỉ luồng phân giải DNS (DNS Leak). Lúc này, trình duyệt sẽ tự phân giải địa chỉ tên miền bằng máy chủ DNS của mạng Internet cục bộ (local ISP), sau đó mới đẩy lưu lượng TCP qua proxy SOCKS5. Facebook sẽ đối chiếu quốc gia của DNS server với quốc gia của IP Proxy, nếu lệch nhau (ví dụ: DNS ở Việt Nam nhưng IP Proxy ở Mỹ), tài khoản sẽ bị khóa ngay lập tức. Bắt buộc phải chuyển hóa thành `socks5h://` để ép toàn bộ luồng phân giải DNS sang đầu xa của Proxy.
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  // Cấu hình proxy rò rỉ DNS
+  const proxyUrl = "socks5://proxyuser:proxypass@192.168.1.100:1080";
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // Sử dụng socks5h:// để phân giải DNS tại đầu xa của proxy
+  const proxyUrl = "socks5h://proxyuser:proxypass@192.168.1.100:1080";
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector kiểm tra các chuỗi cấu hình mạng hoặc proxy URL xem có chứa tiền tố `socks5://` thay vì `socks5h://`.
+* **Spec Reference:** [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md)
+
+---
+
+### AP-23: Static Signature for WebSocket Hello (HIGH)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Gửi gói tin bắt tay chào mừng (`HELLO`/`HANDSHAKE`) của WebSocket từ Extension lên Dashboard bằng một cấu trúc JSON tĩnh không đổi qua các phiên tạo ra vết signature mạng rất dễ nhận diện. Kẻ tấn công hoặc WAF Facebook có thể dễ dàng chặn đứng kết nối bằng cách so khớp cấu trúc byte của JSON. Bắt buộc phải inject `nonce` ngẫu nhiên, `timestamp` động và sắp xếp ngẫu nhiên thứ tự các key trong JSON payload.
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  // background.js - Gửi tin nhắn tĩnh rập khuôn
+  const helloPayload = {
+    type: "HELLO",
+    version: "2.0.0",
+    client_id: "hermes_ext_client"
+  };
+  ws.send(JSON.stringify(helloPayload));
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // background.js - Thêm salt động và ngẫu nhiên hóa
+  const helloPayload = {
+    type: "HELLO",
+    version: "2.0.0",
+    client_id: "hermes_ext_client",
+    timestamp: Date.now(),
+    nonce: Math.random().toString(36).substring(7)
+  };
+  ws.send(JSON.stringify(helloPayload));
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector kiểm tra các câu lệnh gửi tin nhắn WebSocket chào mừng xem payload có chứa các biến thời gian hoặc nonce động hay không.
+* **Spec Reference:** [facepost_00_shared_types.md](file:///home/newuser/AI_facepostgroup/specs/facepost_00_shared_types.md)
+
+---
+
+### AP-24: Non-Stealthy Object Protocol Override (HIGH)
+
+* **Tại sao bị cấm (Why is it banned?):**
+  Ghi đè trực tiếp các thuộc tính tự động hóa của trình duyệt (như `navigator.webdriver = false`) bằng phép gán trần sẽ làm lệch chuỗi prototype chain. Các script bảo mật WAF cấp cao của Facebook sẽ kiểm tra hàm `navigator.webdriver.toString()` hoặc kiểm tra thuộc tính getter. Nếu phát hiện bị ghi đè thô sơ, nó sẽ phát hiện ra bot ngay. Bắt buộc phải sử dụng các cờ native từ Chrome Launch options (`--disable-blink-features=AutomationControlled`).
+* **Code ví dụ sai (Bad code snippet):**
+  ```javascript
+  // content.js - Ghi đè thô sơ bị phát hiện ngay lập tức
+  Object.defineProperty(navigator, 'webdriver', {
+    get: () => false
+  });
+  ```
+* **Code ví dụ đúng (Good code snippet):**
+  ```javascript
+  // chrome_launcher.js - Sử dụng cấu hình native khởi chạy
+  const browser = await puppeteer.launch({
+    args: ['--disable-blink-features=AutomationControlled']
+  });
+  ```
+* **Cách dò tìm / Detection Hint (AST):**
+  AST Selector check trong content script xem có chứa việc gán đè thuộc tính `navigator.webdriver` hoặc `navigator.languages`.
+* **Spec Reference:** [facepost_04_anti_detection.md](file:///home/newuser/AI_facepostgroup/specs/facepost_04_anti_detection.md)
+
+---
+
+### AP-25: Rò rỉ khóa bí mật và thiếu tệp `.gitignore` (CRITICAL)
 
 * **Tại sao bị cấm (Why is it banned?):**
   Lưu trữ thông tin xác thực nhạy cảm (như Facebook API keys, App Secrets, DB connection string, proxy password) trực tiếp trong file `.env` và vô tình commit file này lên Git repository công khai/nội bộ hoặc thiếu tệp `.gitignore` chuẩn sẽ dẫn đến nguy cơ rò rỉ thông tin nghiêm trọng. Kẻ xấu có thể quét (scan) mã nguồn trên Git để lấy cắp tài nguyên, tài khoản Facebook, hoặc tấn công trực tiếp vào cơ sở dữ liệu của hệ thống Dashboard. Do đó, `.env` chứa credentials thật tuyệt đối không được đưa lên Git control.

@@ -332,6 +332,17 @@ def update_task_status(task_keyword, status, workspace_root):
             found = True
             print(f"[TASK] Đã cập nhật trạng thái task: '{t['text']}' -> {'HOÀN THÀNH' if status_done else 'CẦN LÀM'}")
             
+            # Tự động đăng ký file mới vào context_map khi task hoàn thành (Apex Swarm v3.0)
+            if status_done:
+                # Tìm các đường dẫn file tiềm năng trong task text (ví dụ: dashboard/db.js)
+                file_candidates = re.findall(r"[\w\-./]+\.(?:js|jsx|py|html|css|sql|yml|json|md)", t["text"])
+                for fc in file_candidates:
+                    fc_clean = fc.strip("`'\"()[]*")
+                    full_path = os.path.join(workspace_root, fc_clean)
+                    if os.path.exists(full_path) and os.path.isfile(full_path):
+                        print(f"[AUTO-REGISTER] Tự động phát hiện file mới từ task: {fc_clean}")
+                        register_file(full_path, workspace_root)
+            
     if not found:
         print(f"[WARNING] Không tìm thấy task nào chứa từ khóa '{task_keyword}' trong HOTZONE.")
         

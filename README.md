@@ -11,7 +11,7 @@
 
 | Metadata | Value |
 |---|---|
-| Version | `2.1.0` |
+| Version | `3.0.0` |
 | Status | `ACTIVE` |
 | Project | Hermes FacePost-Group |
 | Creator | Non-Tech (0-line coding author, swarm-driven) |
@@ -59,9 +59,10 @@ agent_harness/
 │   └── qa_evaluator.md                ← Trọng tài thẩm định & Khử nhiễu QA (Spec Expert)
 │
 ├── harness/                           ← Bộ kiểm tra & registry chuẩn
-│   ├── anti_pattern_registry.md       ← Danh sách 16 anti-patterns bị cấm (có severity)
+│   ├── anti_pattern_registry.md       ← Danh sách 32 anti-patterns bị cấm (có severity)
 │   ├── error_code_registry.md         ← Toàn bộ error codes của hệ thống (ERR-*)
-│   └── specs_generation_guide.md      ← Hướng dẫn định hình spec chuẩn (Blueprint)
+│   ├── specs_generation_guide.md      ← Hướng dẫn định hình spec chuẩn (Blueprint)
+│   └── apex_sar_engine.py             ← Bộ máy Search-and-Replace (SAR) trần nguyên tử
 │
 ├── workflow/                          ← Quy trình vận hành
 │   └── 4step_assembly.md              ← Quy trình lắp ráp 4 bước đầy đủ
@@ -88,9 +89,10 @@ agent_harness/
 | `roles/auditor_agent.md` | Quy trình audit, format output, zero-tolerance cho CRITICAL | Auditor Agent |
 | `roles/qa_agent.md` | Windows setup, tiered verification, Audit Package schema | QA Agent |
 | `roles/qa_evaluator.md` | Trọng tài thẩm định lỗi thật/ảo, tăng retry_count, báo cáo Escalate | QA Evaluator |
-| `harness/anti_pattern_registry.md` | 16 anti-patterns phân loại CRITICAL/HIGH/MEDIUM/LOW | Auditor + mọi Coding Agent |
+| `harness/anti_pattern_registry.md` | 32 anti-patterns phân loại CRITICAL/HIGH/MEDIUM/LOW | Auditor + mọi Coding Agent |
 | `harness/error_code_registry.md` | Toàn bộ ERR-* codes theo module prefix | QA + Coding Agents |
 | `harness/specs_generation_guide.md` | Hướng dẫn thiết kế và định hình spec chuẩn (Blueprint) | Architect + Spec Writers |
+| `harness/apex_sar_engine.py` | Bộ máy áp dụng khối Search-and-Replace cục bộ một cách deterministic | QA Evaluator |
 | `workflow/4step_assembly.md` | Quy trình đầy đủ từ request → code → audit → test | Tất cả Agents |
 | `brain/master_context.md` | Overview kiến trúc, index 13 specs, tech decisions | Lead Architect (boot context) |
 | `live_context/DESIGN.md` | Thiết kế hệ thống tự động nạp context theo file | Developer / System |
@@ -130,8 +132,8 @@ agent_harness/
 ```
 1. Nhận code từ Coding Agent
 2. Đọc agent_harness/harness/anti_pattern_registry.md
-3. Grep code theo Detection Hints trong registry
-4. Output [APPROVED] hoặc [REJECTED] với evidence cụ thể
+3. Chạy linter local (ESLint/Ruff) & quét AST trên git staged changes để phát hiện anti-pattern
+4. Output [APPROVED] hoặc [REJECTED] kèm Audit Package JSON chi tiết
 ```
 
 ### Bước 4 — QA Agent (Windows runtime)
@@ -151,9 +153,9 @@ agent_harness/
 3. Đánh giá lỗi: Lỗi thật (True Positive) hay Lỗi ảo (False Positive)
 4. Xử lý:
    - Lỗi ảo: Reject báo cáo lỗi của QA, Approve mã nguồn để merge.
-   - Lỗi thật: Làm giàu ngữ cảnh (mitigation_suggestion), tăng retry_count thêm 1.
-     ↳ Nếu retry_count <= 3: Gửi lại cho Coding Agent sửa (Bước 2).
-     ↳ Nếu retry_count > 3 hoặc kích hoạt Escalation Boundary: Dừng luồng, tạo QA Escalation Report gửi Lead Architect & User (ESCALATED_HUMAN).
+   - Lỗi thật: Sử dụng LLM sinh ra khối Structured Search-and-Replace (SAR) cực hẹp, vá trực tiếp qua `apex_sar_engine.py` trong sandbox và chạy lại test. Tăng retry_count thêm 1.
+     ↳ Nếu retry_count <= 3: Tiếp tục chạy lại test trong sandbox.
+     ↳ Nếu retry_count > 3 hoặc kích hoạt Escalation Boundary: Dừng luồng, kích hoạt FSM Maintenance Path (rollback/freeze), gửi QA Escalation Report (ESCALATED_HUMAN).
 ```
 
 ---
@@ -230,7 +232,7 @@ agent_harness/
   └──────────────┘ │ Agent: QA Evaluator (Referee)                   │
                    │ ─────────────────────────────────────────────── │
                    │ • Thẩm định lỗi thật/ảo (False Positive)        │
-                   │ • Làm giàu ngữ cảnh sửa lỗi từ 13 Specs         │
+                   │ • Sinh Structured SAR patches qua apex_engine   │
                    │ • Tăng retry_count (Tối đa 3 lần)               │
                    └─────────────────────────────────────────────────┘
                                    │                     │
@@ -240,8 +242,8 @@ agent_harness/
                                [APPROVE]         ┌───────┴───────┐
                                    │          Có │               │ Không
                                    ▼             ▼               ▼
-                                [MERGE]       [STEP 2]    [ESCALATED_HUMAN]
-                                             (Sửa lỗi)    (Lead Architect/User)
+                                 [MERGE]       [HOTFIX]    [ESCALATED_HUMAN]
+                                             (SAR Sandbox) (FSM Maintenance/User)
                                                  ▲               │
                                                  │               │
                                                  └───────────────┘ (Nếu được duyệt)
@@ -302,6 +304,13 @@ Bộ Harness này được thiết kế theo triết lý **tách rời cấu hì
 
 ## 📈 Nhật Ký Nâng Cấp (Changelog)
 
+### v3.0.0 (2026-06-18) - Apex Swarm Upgrade (Antigravity 2.0 Native)
+- **Tối Ưu Hoá Cho Antigravity 2.0 (Gemini 3.5)**: Loại bỏ giới hạn context cứng 2KB, áp dụng Full Spec Hydration để nạp Spec đầy đủ, loại bỏ lỗi thiếu interface.
+- **Bộ Máy Search-and-Replace (SAR) Cục Bộ**: Triển khai `apex_sar_engine.py` giúp vá nóng mã nguồn một cách deterministic tuyệt đối, loại bỏ lỗi sinh patch Unified Diff `.patch`.
+- **Tích Hợp Quét AST & Linter Local**: Nâng cấp Auditor Agent từ quét Regex tĩnh sang gọi trực tiếp ESLint/Ruff ở local sandbox, chỉ quét vùng mã nguồn có sự thay đổi (`git diff --staged`) và các file liên đới.
+- **Ma Trận Khẩn Cấp FSM & Git Sandbox**: Bổ dung cơ chế FSM Maintenance Path (tự động freeze, rollback, xoay key) và chính sách phòng vệ Git branch cô lập (`sandbox/task-xxx`) cho mỗi ticket lập trình.
+- **Mở rộng 32 Luật Chống Anti-Patterns**: Thêm chi tiết cho các anti-pattern từ AP-18 đến AP-25 ở các mức độ CRITICAL và HIGH để phòng thủ tối đa trước WAF của Facebook.
+
 ### v2.0.0 (2026-06-18) - Isolated Context & Auto Registration Upgrade
 - **Cô Lập Ngữ Cảnh Sống (Isolated Context Cache)**: Loại bỏ file `live_context.md` dùng chung gây xung đột chéo (race condition). Chuyển sang cơ chế tạo file `.context.md` riêng biệt cho từng file nguồn trong thư mục `live_context/cache/`.
 - **Khử Trùng Lặp Chuỗi (Substring Collision Fix)**: Chuyển đổi thuật toán so khớp Spec từ so khớp chứa (`in`) sang so khớp chính xác tuyệt đối sau khi chuẩn hóa đường dẫn (`==`).
@@ -310,6 +319,6 @@ Bộ Harness này được thiết kế theo triết lý **tách rời cấu hì
 
 ---
 
-*Hermes FacePost-Group — Agent Harness v2.0.0*
+*Hermes FacePost-Group — Agent Harness v3.0.0*
 *Xem `workflow/4step_assembly.md` để biết chi tiết vận hành.*
 

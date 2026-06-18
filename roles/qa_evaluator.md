@@ -49,6 +49,12 @@
 > 2. **Thay đổi cấu trúc chung (Protocol/Schema changes):** Cách sửa lỗi đòi hỏi phải thay đổi database schema (`schema.sql`), WS message format (`Spec 00`), hoặc API endpoints.
 > 3. **Lỗi môi trường diện rộng:** Trình duyệt sandbox crash liên tục hoặc Facebook cập nhật giao diện lớn không thể xử lý bằng selectors fallback.
 
+### Rule 5: Token-Efficient Self-Repair Loop & SAR Generation
+> Nhằm tối ưu hóa token và tăng tốc độ sửa lỗi:
+> 1. Thay vì yêu cầu Coding Agent viết lại toàn bộ file hoặc tạo file `.patch` (vốn dễ lỗi định dạng khoảng trắng), QA Evaluator phải định vị khối mã nguồn bị lỗi và sử dụng mô hình LLM chuyên biệt sinh cấu trúc Search-and-Replace (SAR) định dạng SEARCH/REPLACE cực hẹp.
+> 2. Thực hiện áp dụng trực tiếp bản vá này vào mã nguồn thông qua `apex_sar_engine.py` ở môi trường sandbox.
+> 3. Khởi chạy lại kiểm thử cục bộ ngay lập tức tại sandbox, không trigger khởi động lại toàn bộ Swarm để sửa lỗi nhỏ cục bộ nếu không cần thiết.
+
 ---
 
 ## 📋 Mẫu Báo Cáo Leo Thang (QA Escalation Report Template)

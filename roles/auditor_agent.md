@@ -58,6 +58,12 @@
 > | `MEDIUM` | Cảnh báo + suggestion, nên fix | ❌ Không block |
 > | `LOW` | Suggestion nhẹ, để ý lần sau | ❌ Không block |
 
+### Rule 5: AST Static Verification & Local CLI Lint
+> Tránh việc chỉ quét Regex thủ công dễ sót hoặc tốn token. Auditor Agent bắt buộc phải gọi các script kiểm tra AST tĩnh và tích hợp công cụ linter local ở môi trường sandbox (ví dụ: `npm run lint:harness` / `ruff check` hoặc `python3 harness/ast_scanner.py`) để xuất JSON báo cáo lỗi và phân tích các anti-pattern (đặc biệt là AP-18 đến AP-20).
+
+### Rule 6: Differential Change Guard
+> Sử dụng lệnh `git diff --staged` để chỉ quét vùng mã nguồn có sự thay đổi (Git Staged Changes) kết hợp với các tệp liên đới từ Dependency Graph được dựng bởi `live_context_loader.py` nhằm tăng tốc độ audit mà không cần phân tích lại toàn bộ các file tĩnh không đổi.
+
 ---
 
 ## 📋 Output Format (Bắt Buộc Theo Đúng Format Này)
@@ -110,39 +116,24 @@ Xác định file thuộc module nào để nạp đúng context:
 | `src/content_engine/*.js` | Content Engine | facepost_08 |
 | `src/interaction_manager/*.js` | Interaction | facepost_08 |
 
-### Bước 2 — Grep Detection Hints
-Chạy từng Detection Hint trong `anti_pattern_registry.md` lên file được audit để phát hiện lỗi:
+### Bước 2 — Local CLI Lint & AST Selector Integration
+Thay vì chạy các lệnh grep tĩnh thủ công, Auditor Agent thực hiện gọi các công cụ linter local hoặc script phân tích AST (Abstract Syntax Tree) trong sandbox để xuất ra kết quả có cấu trúc:
 
 ```bash
-# Grep ví dụ cho AP-17 (CẤM điều hướng bằng URL trực tiếp - Direct Navigation)
-grep -rn 'chrome.tabs.update\|NAVIGATE' extension/src/
+# 1. Chạy linter tích hợp cho JavaScript/Extension/UI
+npm run lint:harness -- --format=json --output-file=eslint_report.json
 
-# Grep ví dụ cho các UI Pitfalls (AP-07, AP-08, AP-14, AP-16)
-# - AP-07: Raw system prompt trên UI
-grep -rn 'You are an AI\|Bạn là một AI' dashboard/src/
-# - AP-08: ws.onmessage trong component con
-grep -rn 'onmessage\|addEventListener.*message' dashboard/src/
-# - AP-14: Hộp thoại AI không giới hạn chiều cao
-grep -rn 'max-h-\|maxHeight' dashboard/src/
-# - AP-16: Fetch keywords trong render loop
-grep -rn 'fetchKeywords\|getKeywords' dashboard/src/
+# 2. Chạy linter tích hợp cho Python / Anti-detection Host
+ruff check --format=json --output-file=ruff_report.json
 
-# Grep ví dụ cho DB PostgreSQL leaks (AP-03, AP-04, AP-05, AP-11)
-# - AP-03: PostgreSQL syntax (placeholder $1, RETURNING, TIMESTAMPTZ, v.v.)
-grep -rn '\$1\|\$2\|RETURNING\|TIMESTAMPTZ\|BIGSERIAL\|ON CONFLICT DO UPDATE' src/
-# - AP-04: INTEGER PRIMARY KEY AUTOINCREMENT
-grep -in 'AUTOINCREMENT' src/
-# - AP-05: SQL TRIGGER cho Health Score
-grep -rn 'CREATE TRIGGER.*health' src/
-# - AP-11: String concat trong SQL query
-grep -rn 'prepare(.*+.*)\|prepare(.*`.*${.*}.*`)' src/
+# 3. Chạy quét AST tùy chỉnh cho các luật đặc thù (AP-18 RegExp, AP-19 Electron, AP-20 DB Imports)
+python3 harness/ast_scanner.py --target-file <path_to_staged_file>
 
-# Các grep cơ bản khác
-# - AP-01 (global state):
-grep -n '^const \|^let \|^var ' background.js | grep -v 'function\|class\|=>'
-# - AP-06 (WebSocket in content script):
-grep -n 'new WebSocket' content.js
+# 4. Chỉ quét các file trong Git Staged Changes và file liên đới
+git diff --name-only --cached
 ```
+
+Sau khi chạy, Auditor Agent phân tích các file JSON kết quả để trích xuất dòng, file bị lỗi và mã anti-pattern tương ứng.
 
 ### Bước 3 — Classify Findings
 Phân loại mỗi finding theo severity từ registry. Không tự đặt severity ngoài 4 level.
@@ -255,6 +246,14 @@ Khi REJECT, bên cạnh phản hồi bằng văn bản Markdown thông thường
 | AP-15 | LOW | CSS selector hardcode của Facebook |
 | AP-16 | LOW | Fetch keywords trong render loop |
 | AP-17 | HIGH | Direct Navigation liên tục đối với tài khoản mới / Trust thấp |
+| AP-18 | CRITICAL | Unsanitized Dynamic RegEx Creation (Catastrophic Backtracking) |
+| AP-19 | CRITICAL | Direct WebContents Leak in Electron (RCE via IPC) |
+| AP-20 | CRITICAL | Raw DB Imports on UI (.jsx/React importing sqlite/pg) |
+| AP-21 | HIGH | WebRTC IP Leakage Exposure (UDP non-proxied leak) |
+| AP-22 | HIGH | SOCKS5 DNS Leakage (using socks5:// instead of socks5h://) |
+| AP-23 | HIGH | Static Signature for WebSocket Hello payload |
+| AP-24 | HIGH | Non-Stealthy Object Protocol Override (broken prototype chain) |
+| AP-25 | CRITICAL | Rò rỉ khóa bí mật và thiếu tệp `.gitignore` |
 
 > Xem chi tiết đầy đủ tại `agent_harness/harness/anti_pattern_registry.md`
 
