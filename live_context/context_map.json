@@ -153,6 +153,27 @@
         "hermes-desktop/build/installer.nsh",
         ".github/workflows/release.yml"
       ]
+    },
+    {
+      "spec_id": "Spec 12",
+      "spec_name": "QA Strategy, WebSocket Contract Testing, DOM Sandbox & Local E2E Runner",
+      "spec_file": "facepost_12_testing_qa.md",
+      "source_files": [
+        "tests/ws_contract.test.js",
+        "tests/dom_sandbox_content.test.js",
+        "agent_harness/local_e2e_runner.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 13",
+      "spec_name": "Local SQLite Error Diagnostics & Anonymous Telemetry Export",
+      "spec_file": "facepost_13_telemetry_diagnostics.md",
+      "source_files": [
+        "server/storage_manager.js",
+        "server/telemetry/sanitizer.js",
+        "server/telemetry/exporter.js",
+        "src/components/TelemetrySettings.jsx"
+      ]
     }
   ]
 }
