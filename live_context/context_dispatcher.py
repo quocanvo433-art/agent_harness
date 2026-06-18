@@ -92,11 +92,11 @@ def load_tracker_parts(tracker_path):
         with open(tracker_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Tìm vị trí của HOTZONE và ARCHIVE
-        hotzone_marker = "## 🔴 HOTZONE"
-        archive_marker = "## 📦 ARCHIVE"
+        # Sử dụng regex linh hoạt cho cả khoảng trắng, emoji và viết hoa/thường để tăng khả năng chống lỗi
+        hotzone_pattern = r"##\s*🔴\s*HOTZONE"
+        archive_pattern = r"##\s*📦\s*ARCHIVE"
         
-        parts = content.split(hotzone_marker)
+        parts = re.split(hotzone_pattern, content, flags=re.IGNORECASE)
         if len(parts) < 2:
             print("[ERROR] Không tìm thấy marker HOTZONE trong tracker.")
             return None
@@ -104,13 +104,13 @@ def load_tracker_parts(tracker_path):
         part1 = parts[0]
         rest = parts[1]
         
-        parts2 = rest.split(archive_marker)
+        parts2 = re.split(archive_pattern, rest, flags=re.IGNORECASE)
         if len(parts2) < 2:
             print("[ERROR] Không tìm thấy marker ARCHIVE trong tracker.")
             return None
         
         hotzone_content = parts2[0]
-        part3 = archive_marker + parts2[1]
+        part3 = "## 📦 ARCHIVE\n" + parts2[1]
         
         return part1, hotzone_content, part3
     except Exception as e:
