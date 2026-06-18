@@ -56,7 +56,8 @@ agent_harness/
 │
 ├── harness/                           ← Bộ kiểm tra & registry chuẩn
 │   ├── anti_pattern_registry.md       ← Danh sách 16 anti-patterns bị cấm (có severity)
-│   └── error_code_registry.md         ← Toàn bộ error codes của hệ thống (ERR-*)
+│   ├── error_code_registry.md         ← Toàn bộ error codes của hệ thống (ERR-*)
+│   └── specs_generation_guide.md      ← Hướng dẫn định hình spec chuẩn (Blueprint)
 │
 ├── workflow/                          ← Quy trình vận hành
 │   └── 4step_assembly.md              ← Quy trình lắp ráp 4 bước đầy đủ
@@ -64,8 +65,14 @@ agent_harness/
 ├── brain/                             ← Context tổng hợp cho Lead Architect
 │   └── master_context.md              ← Map kiến trúc tổng, index specs, key decisions
 │
-└── live_context/                      ← Hệ thống nạp ngữ cảnh động (thiết kế)
-    └── DESIGN.md                      ← Thiết kế Live Context Loader (chưa triển khai)
+└── live_context/                      ← Hệ thống tự động nạp ngữ cảnh động (ĐÃ TRIỂN KHAI)
+    ├── DESIGN.md                      ← Thiết kế tổng thể của hệ thống nạp ngữ cảnh
+    ├── context_map.json               ← Bản đồ ánh xạ File nguồn -> Spec ID
+    ├── context_dispatcher.py          ← Script điều phối và phân phối live context
+    ├── live_context_loader.py         ← Script nạp ngữ cảnh tự động vào cache
+    ├── live_context.md                ← File nạp ngữ cảnh phiên hiện tại
+    ├── cache/                         ← Thư mục lưu cache ngữ cảnh riêng lẻ từng file code
+    └── archive/                       ← Kho lưu trữ ngữ cảnh của các spec đã nén/archive
 ```
 
 ### Mô tả chi tiết từng thành phần
@@ -78,9 +85,15 @@ agent_harness/
 | `roles/qa_agent.md` | Windows setup, tiered verification, Audit Package schema | QA Agent |
 | `harness/anti_pattern_registry.md` | 16 anti-patterns phân loại CRITICAL/HIGH/MEDIUM/LOW | Auditor + mọi Coding Agent |
 | `harness/error_code_registry.md` | Toàn bộ ERR-* codes theo module prefix | QA + Coding Agents |
+| `harness/specs_generation_guide.md` | Hướng dẫn thiết kế và định hình spec chuẩn (Blueprint) | Architect + Spec Writers |
 | `workflow/4step_assembly.md` | Quy trình đầy đủ từ request → code → audit → test | Tất cả Agents |
-| `brain/master_context.md` | Overview kiến trúc, index 9 specs, tech decisions | Lead Architect (boot context) |
-| `live_context/DESIGN.md` | Thiết kế hệ thống tự động nạp context theo file | Để triển khai sau |
+| `brain/master_context.md` | Overview kiến trúc, index 13 specs, tech decisions | Lead Architect (boot context) |
+| `live_context/DESIGN.md` | Thiết kế hệ thống tự động nạp context theo file | Developer / System |
+| `live_context/context_map.json` | Bản đồ ánh xạ file nguồn sang Spec tương ứng | Loader + Dispatcher |
+| `live_context/live_context_loader.py` | Script tự động nạp và cập nhật ngữ cảnh | IDE / Agent trigger |
+| `live_context/context_dispatcher.py` | Điều phối và phân phối live context cho từng file | IDE / System |
+| `live_context/cache/` | Thư mục cache lưu trữ ngữ cảnh động của từng file | Coding Agents |
+| `live_context/archive/` | Kho lưu trữ ngữ cảnh của các spec đã nén/archive | System |
 
 ---
 
@@ -103,7 +116,7 @@ agent_harness/
 1. Nhận Coding Ticket từ Architect
 2. Đọc DUY NHẤT spec sub-file được chỉ định trong ticket
 3. Đọc facepost_00_shared_types.md (Phần liên quan: DB Schema / Message Types)
-4. (Tương lai) Gọi: python live_context/live_context_loader.py --file <target>
+4. Thực hiện nạp context: Gọi python live_context/live_context_loader.py <active_file_path> <workspace_root> hoặc thông qua mcp_context
 5. Code theo function_signature và output_contract trong ticket
 ```
 
@@ -218,11 +231,12 @@ agent_harness/
 
 ### Coding Agent → Spec Mapping
 
-| Agent | Spec chính | Phần Spec 00 |
+| Agent | Spec chính | Phần Spec 00 / File liên quan |
 |---|---|---|
-| `extension_worker` | `facepost_01_chrome_extension.md` | Message Types (Phần 3) |
-| `backend_worker` | spec module đang build | DB Schema (AD-05) |
-| `network_worker` | `facepost_04_anti_detection.md` | LocalProxyRelay (AD-03) |
+| `extension_worker` | `facepost_01_chrome_extension.md`, `facepost_09_hybrid_extension.md` | Message Types (Phần 3) |
+| `backend_worker` | spec module đang build (Spec 03, 10, 13) | DB Schema (Phần 5) |
+| `network_worker` | `facepost_04_anti_detection.md` | LocalProxyRelay |
+| `qa_agent` | `facepost_12_testing_qa.md` | Quy trình kiểm thử hợp đồng WS |
 
 ### Anti-Pattern Severity
 
