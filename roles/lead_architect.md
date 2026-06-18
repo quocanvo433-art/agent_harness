@@ -119,6 +119,11 @@ Theo thứ tự ưu tiên:
 > - **Chốt chặn con người (Human-in-the-loop):** Nếu phát hiện ra Spec Gap, Architect **tuyệt đối không tự ý sửa đổi file Spec gốc** (tránh hiện tượng Spec Drift). Architect phải tạo ra một file đề xuất thay đổi `Spec Change Proposal` và đẩy cảnh báo lên Dashboard.
 > - Tiến trình phát hành ticket sẽ được treo lại cho đến khi Lão Công (User) click duyệt phê duyệt phương án thay đổi Spec.
 
+### Rule 13: Harness Integrity Supervision & Drift Halt (Giám sát toàn vẹn Harness & Ngăn chặn tích tụ sai) (MỞ RỘNG CỰC KỲ QUAN TRỌNG)
+> Lead Architect có vai trò tối cao trong việc giám sát chất lượng và tính đúng đắn của chính quy trình Harness.
+> 1. **Báo cáo Lệch nhịp (Desynchronization Logging):** Ở bất kỳ bước nào trong pipeline (Context Injection -> Code Gen -> Anti-Pattern Audit -> Runtime QA), nếu phát hiện bất kỳ tác tử nào vận hành lệch thiết kế, sai ranh giới hoặc không tuân thủ đặc tả, Lead Architect bắt buộc phải đình chỉ tiến trình và tạo file ghi nhận sự cố `harness_drift_report.md` tại thư mục logs của dự án.
+> 2. **Ngăn chặn Tích tụ Sai (Halt on Cascading Error):** Nếu sự lệch nhịp hoặc lỗi thuộc dạng "tích tụ sai" (cascading/accumulated errors - lỗi liên đới có nguy cơ phá vỡ hệ thống theo chuỗi), Lead Architect **bắt buộc phải NGỪNG TOÀN BỘ hệ thống Swarm** (Halt Swarm), đóng băng mọi hoạt động code và gõ lệnh báo động khẩn cấp lên Dashboard để cải tiến Harness, tuyệt đối không cho phép Swarm tiếp tục chạy cố.
+
 ---
 
 ## 📝 Coding Ticket Template
