@@ -497,12 +497,95 @@ def archive_week(week_num, workspace_root):
     # 4. Tự động gọi thư ký cập nhật progress tracker
     update_tracker_on_archive(week_num, workspace_root)
 
+def register_file(source_file, workspace_root):
+    """
+    Tự động phân loại và đăng ký file mới vào context_map.json
+    dựa trên các quy tắc tiền tố đường dẫn (Path Prefix Rules).
+    """
+    abs_source = os.path.abspath(source_file)
+    abs_workspace = os.path.abspath(workspace_root)
+    if not abs_source.startswith(abs_workspace) and not os.path.isabs(source_file):
+        abs_source = os.path.abspath(os.path.join(abs_workspace, source_file))
+    rel_path = os.path.relpath(abs_source, abs_workspace).replace("\\", "/")
+    
+    # 1. Áp dụng quy tắc phân loại tự động
+    spec_id = "Spec 00"
+    filename = os.path.basename(rel_path).lower()
+    
+    if "agent_loop" in filename:
+        spec_id = "Spec 05"
+    elif "checkpoint_detector" in filename or "checkpoint_handler" in filename:
+        spec_id = "Spec 06"
+    elif any(x in filename for x in ["human_simulator", "proxy_rotator", "chrome_launcher", "react_state_patcher"]) or rel_path.startswith("native_host/"):
+        spec_id = "Spec 04"
+    elif rel_path in ["dashboard/dashboard_ui/ContentComposer.jsx", "dashboard/dashboard_ui/InteractionPanel.jsx"]:
+        spec_id = "Spec 08"
+    elif rel_path in ["dashboard/ai_brain.js", "dashboard/session_manager.js", "dashboard/prompt_templates.js"]:
+        spec_id = "Spec 02"
+    elif rel_path.startswith("extension_cws/"):
+        spec_id = "Spec 09"
+    elif rel_path.startswith("extension/"):
+        spec_id = "Spec 01"
+    elif rel_path.startswith("dashboard/dashboard_ui/"):
+        spec_id = "Spec 07"
+    elif rel_path.startswith("dashboard/src/routes/") or rel_path.startswith("dashboard/src/services/") or rel_path.startswith("dashboard/"):
+        spec_id = "Spec 03"
+    elif rel_path.startswith("src/"):
+        spec_id = "Spec 08"
+    elif rel_path.startswith("hermes-desktop/") or rel_path.startswith(".github/"):
+        spec_id = "Spec 10"
+
+    # 2. Đọc context_map.json
+    context_map_path = os.path.join(workspace_root, "agent_harness", "live_context", "context_map.json")
+    if not os.path.exists(context_map_path):
+        print(f"[ERROR] Không tìm thấy file cấu hình tại {context_map_path}")
+        sys.exit(1)
+        
+    try:
+        with open(context_map_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    except Exception as e:
+        print(f"[ERROR] Lỗi khi đọc file cấu hình: {e}")
+        sys.exit(1)
+        
+    # 3. Chèn file vào spec_id tương ứng
+    mappings = config.get("mappings", [])
+    found = False
+    for mapping in mappings:
+        if mapping.get("spec_id") == spec_id:
+            source_files = mapping.get("source_files", [])
+            # Chuẩn hóa tên file để kiểm tra trùng lặp
+            norm_files = [f.replace("\\", "/").strip("/") for f in source_files]
+            norm_new = rel_path.strip("/")
+            if norm_new not in norm_files:
+                source_files.append(rel_path)
+                mapping["source_files"] = source_files
+                found = True
+                print(f"[SUCCESS] Đã đăng ký thành công file mới: '{rel_path}' -> {spec_id}")
+            else:
+                print(f"[INFO] File '{rel_path}' đã được đăng ký trong {spec_id} từ trước.")
+                return
+            break
+            
+    if not found:
+        print(f"[ERROR] Không tìm thấy Spec ID '{spec_id}' trong context_map.json")
+        sys.exit(1)
+        
+    # 4. Ghi lại context_map.json
+    try:
+        with open(context_map_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[ERROR] Không thể ghi context_map.json: {e}")
+        sys.exit(1)
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print("Sử dụng:")
         print("  python3 context_dispatcher.py hydrate <source_file_path> [workspace_root]")
         print("  python3 context_dispatcher.py archive <week_number> [workspace_root]")
         print("  python3 context_dispatcher.py task <task_keyword> <done/todo> [workspace_root]")
+        print("  python3 context_dispatcher.py register <new_file_path> [workspace_root]")
         sys.exit(1)
         
     cmd = sys.argv[1].lower()
@@ -529,6 +612,9 @@ if __name__ == "__main__":
             sys.exit(1)
     elif cmd == "task":
         update_task_status(arg2, status, workspace)
+    elif cmd == "register":
+        register_file(arg2, workspace)
     else:
         print(f"[ERROR] Lệnh không hợp lệ: {cmd}")
         sys.exit(1)
+
