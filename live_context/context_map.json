@@ -103,6 +103,7 @@
     },
     {
       "spec_id": "Spec 08",
+      "spec_name": "AI Content Engine & Interaction Manager",
       "spec_file": "facepost_08_content_engine.md",
       "source_files": [
         "src/content_engine/index.js",

@@ -21,7 +21,7 @@ Dưới đây là danh mục 10 tài liệu đặc tả cốt lõi của dự á
 | **Spec 05** | Vòng lặp Agent loop Orchestrator chính | Điều phối lệnh chạy tự động và giao tiếp Dashboard <-> Extension <-> LLM. | `specs/facepost_05_agent_loop.md` |
 | **Spec 06** | Checkpoint Handler & Tự phục hồi | Tự động phát hiện và xử lý Pop-up Checkpoint của Facebook để ngủ/hibernate. | `specs/facepost_06_checkpoint_handler.md` |
 | **Spec 07** | Dashboard UI & Styling Neon | CSS Styling neon, React components hiển thị live grid, health gauge, log terminal. | `specs/facepost_07_dashboard_ui.md` |
-| **Spec 08** | AI Content Engine & Interaction Panel | Persona Store, trích xuất văn phong mẫu, kiểm soát độ người, trả lời bình luận. | `specs/facepost_08_content_engine.md` |
+| **Spec 08** | AI Content Engine & Interaction Manager | Persona Store, trích xuất văn phong mẫu, kiểm soát độ người, trả lời bình luận. | `specs/facepost_08_content_engine.md` |
 | **Spec 09** | Kiến trúc Hybrid Extension ("Extension Đôi") | Giải pháp phân tách CWS Diplomat (bản sạch) và GitHub Ghost (full agentic). | `specs/facepost_09_hybrid_extension.md` |
 
 ---
