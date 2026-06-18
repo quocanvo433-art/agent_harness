@@ -52,7 +52,8 @@ agent_harness/
 │   ├── lead_architect.md              ← Kiến trúc sư tổng điều phối
 │   ├── coding_agents.md               ← 3 Feature Coding Agents (ext/backend/network)
 │   ├── auditor_agent.md               ← Anti-Pattern Auditor (gác cổng chất lượng)
-│   └── qa_agent.md                    ← Windows Sandbox QA Agent (chạy E2E thật)
+│   ├── qa_agent.md                    ← Windows Sandbox QA Agent (chạy E2E thật)
+│   └── qa_evaluator.md                ← Trọng tài thẩm định & Khử nhiễu QA (Spec Expert)
 │
 ├── harness/                           ← Bộ kiểm tra & registry chuẩn
 │   ├── anti_pattern_registry.md       ← Danh sách 16 anti-patterns bị cấm (có severity)
@@ -83,6 +84,7 @@ agent_harness/
 | `roles/coding_agents.md` | Role rules cho 3 coding agents với context isolation nghiêm ngặt | extension/backend/network workers |
 | `roles/auditor_agent.md` | Quy trình audit, format output, zero-tolerance cho CRITICAL | Auditor Agent |
 | `roles/qa_agent.md` | Windows setup, tiered verification, Audit Package schema | QA Agent |
+| `roles/qa_evaluator.md` | Trọng tài thẩm định lỗi thật/ảo, tăng retry_count, báo cáo Escalate | QA Evaluator |
 | `harness/anti_pattern_registry.md` | 16 anti-patterns phân loại CRITICAL/HIGH/MEDIUM/LOW | Auditor + mọi Coding Agent |
 | `harness/error_code_registry.md` | Toàn bộ ERR-* codes theo module prefix | QA + Coding Agents |
 | `harness/specs_generation_guide.md` | Hướng dẫn thiết kế và định hình spec chuẩn (Blueprint) | Architect + Spec Writers |
@@ -138,9 +140,22 @@ agent_harness/
 4. Output: Audit Package JSON hoặc PASS
 ```
 
+### Bước 4b — QA Evaluator Agent (Validation Gate)
+
+```
+1. Nhận Audit Package JSON khi QA Agent báo thất bại (FAIL)
+2. Đọc toàn bộ 13 Specs và mã nguồn để đối chiếu logic
+3. Đánh giá lỗi: Lỗi thật (True Positive) hay Lỗi ảo (False Positive)
+4. Xử lý:
+   - Lỗi ảo: Reject báo cáo lỗi của QA, Approve mã nguồn để merge.
+   - Lỗi thật: Làm giàu ngữ cảnh (mitigation_suggestion), tăng retry_count thêm 1.
+     ↳ Nếu retry_count <= 3: Gửi lại cho Coding Agent sửa (Bước 2).
+     ↳ Nếu retry_count > 3 hoặc kích hoạt Escalation Boundary: Dừng luồng, tạo QA Escalation Report gửi Lead Architect & User (ESCALATED_HUMAN).
+```
+
 ---
 
-## Luồng 4 Bước: Architect → Coding → Auditor → QA
+## Luồng 4 Bước: Architect → Coding → Auditor → QA → Validation Gate
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════╗
@@ -190,26 +205,43 @@ agent_harness/
   │  Output: Audit Result                                               │
   └─────────────────────────────────────────────────────────────────────┘
                    │                    │
-            [APPROVED]            [REJECTED]
-                   │                    │
-                   ▼                    └──────────────────┐
-  ┌─────────────────────────────────────────────────────┐  │
-  │  STEP 4 — RUNTIME HARNESS                           │  │
-  │  Agent: Windows QA Agent                            │  │
-  │  ─────────────────────────────────────────────────  │  │
-  │  • Vòng 1: Static Contract (JSON Schema, Protocol)  │  │
-  │  • Vòng 2: Mock Sandbox (Unit test + DOM fixture)   │  │
-  │  • Vòng 3: Windows Runtime E2E (Chrome thật)        │  │
-  │                                                     │  │
-  │  Output: PASS hoặc Audit Package JSON               │  │
-  └─────────────────────────────────────────────────────┘  │
-          │                │                               │
-        PASS            FAIL                               │
-          │                │                               │
-          ▼                └──────────────► STEP 2 ◄───────┘
-  ┌──────────────┐         (kèm Audit Package)
-  │   DONE ✅   │
-  └──────────────┘
+            [APPROVED]            [REJECTED] ──┐
+                   │                           │
+                   ▼                           │
+  ┌─────────────────────────────────────────┐  │
+  │  STEP 4 — RUNTIME HARNESS               │  │
+  │  Agent: Windows QA Agent                │  │
+  │  ────────────────────────────────────── │  │
+  │  • Vòng 1: Static Contract / Schema     │  │
+  │  • Vòng 2: Mock Sandbox / Unit tests    │  │
+  │  • Vòng 3: Windows Runtime E2E          │  │
+  │                                         │  │
+  │  Output: PASS hoặc Audit Package JSON   │  │
+  └─────────────────────────────────────────┘  │
+          │                │                   │
+        PASS             FAIL                  │
+          │                │                   │
+          ▼                ▼                   │
+  ┌──────────────┐ ┌─────────────────────────────────────────────────┐
+  │   DONE ✅    │ │ STEP 4b — QA VALIDATION GATE                    │◄┘
+  └──────────────┘ │ Agent: QA Evaluator (Referee)                   │
+                   │ ─────────────────────────────────────────────── │
+                   │ • Thẩm định lỗi thật/ảo (False Positive)        │
+                   │ • Làm giàu ngữ cảnh sửa lỗi từ 13 Specs         │
+                   │ • Tăng retry_count (Tối đa 3 lần)               │
+                   └─────────────────────────────────────────────────┘
+                                   │                     │
+                    [REJECT QA REPORT] (Lỗi ảo)      [TRUE FAIL]
+                                   │                     │
+                                   ▼             retry_count <= 3?
+                               [APPROVE]         ┌───────┴───────┐
+                                   │          Có │               │ Không
+                                   ▼             ▼               ▼
+                                [MERGE]       [STEP 2]    [ESCALATED_HUMAN]
+                                             (Sửa lỗi)    (Lead Architect/User)
+                                                 ▲               │
+                                                 │               │
+                                                 └───────────────┘ (Nếu được duyệt)
 ```
 
 ---

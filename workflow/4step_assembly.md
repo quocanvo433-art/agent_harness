@@ -60,13 +60,24 @@ Dưới đây là sơ đồ tổng quan thể hiện sự phối hợp chặt ch
 +--------------------------------------------------------------------+   │
                     │                                                    │
              [PASS] │                                            [FAIL]  │
-                    ▼                                                    │
-┌──────────────────────────────────────┐        ┌────────────────────────┴──────────────────────┐
-│ DONE ✅                              │        │ RECOVERY LOOP (Vòng Lặp Phục Hồi)             │
-│ Tích hợp mã nguồn thành công         │ ◄──────│ Gửi gói phản hồi kỹ thuật (Audit Package JSON) │
-│ và sẵn sàng phát hành.               │        │ quay về BƯỚC 2 để Coding Agent sửa chữa.      │
-│ ↳ Kích hoạt nén ngữ cảnh (CCP)       │        │ ⚠ Bảo vệ No-Throw & Giới hạn Max Retries = 3.  │
-└──────────────────────────────────────┘        └───────────────────────────────────────────────┘
+                    ▼                                                    ▼
++──────────────────────────────────────+        +------------------------------------------------------+
+| DONE                                 |        | BƯỚC 4b: QA VALIDATION GATE (QA Evaluator Agent)     |
+| Tích hợp mã nguồn thành công         |        | - Thẩm định báo cáo lỗi thật/ảo (False Positive)     |
+| và sẵn sàng phát hành.               |        | - Làm giàu ngữ cảnh sửa lỗi từ 13 Specs tương ứng   |
+| - Kích hoạt nén ngữ cảnh (CCP)       |        | - Tăng retry_count (Tối đa 3 lần)                    |
++──────────────────────────────────────+        +------------------------------------------------------+
+                                                                         |
+                                                +────────────────────────┴──────────────────────+
+                                                | [TRUE FAIL]                                   | [FALSE POSITIVE]
+                                                | [retry_count <= 3?]                           | [APPROVE & MERGE]
+                                                +──────────┬──────────+                          |
+                                                | Có       | Không    |                          |
+                                                v          v          v                          v
+                                           +-----------+  +-----------+                    +------------+
+                                           | BƯỚC 2    |  | ESCALATED |                    | DONE       |
+                                           | Sửa lỗi   |  | HUMAN     |                    +------------+
+                                           +-----------+  +-----------+
 ```
 
 ---
@@ -140,6 +151,21 @@ Dưới đây là sơ đồ tổng quan thể hiện sự phối hợp chặt ch
 
 ---
 
+### BƯỚC 4b: QA VALIDATION GATE (QA Evaluator Agent)
+*   **Mô tả:** Đóng vai trò làm Trọng tài thẩm định và Khử nhiễu lỗi. QA Evaluator đứng giữa QA Agent và Coding Agent nhằm ngăn chặn lỗi ảo, làm giàu ngữ cảnh trước khi trả lại lỗi và điều phối cơ chế leo thang khi chạm giới hạn.
+*   **Đầu vào (Input):** `Audit Package JSON` ghi nhận lỗi runtime từ Bước 4 hoặc báo cáo reject từ Bước 3.
+*   **Hành động của Agent (Agent Actions):**
+    1.  **Thẩm định lỗi thật/ảo:** Đối chiếu báo cáo lỗi với 13 đặc tả kỹ thuật (Specs). Nếu xác định lỗi của QA Agent là do test suite cấu hình sai hoặc flaky test (lỗi ảo) -> Ghi nhãn `REJECT QA REPORT` và trực tiếp phê duyệt (`APPROVE`) để merge.
+    2.  **Làm giàu ngữ cảnh (Context Enrichment):** Nếu xác định lỗi thật (True Positive), trích xuất spec tương ứng, mô tả rõ vi phạm phần nào và viết hướng dẫn khắc phục chi tiết vào trường `mitigation_suggestion` thay vì gửi raw log thô.
+    3.  **Tăng retry count:** Đọc `retry_count` hiện tại từ package, tăng thêm 1 đơn vị.
+    4.  **Phát động Escalation Gate:** Nếu `retry_count` vượt quá 3, hoặc phát hiện các điều kiện leo thang bắt buộc (Spec Gap, Spec Conflict, WS Protocol/DB Schema changes, Sandboxed browser crashes diện rộng) -> Chuyển trạng thái ticket sang `ESCALATED_HUMAN`, tạo `QA Escalation Report` và trình Lead Architect cùng User phê duyệt.
+*   **Điều kiện kiểm tra bắt buộc (Mandatory Checks):**
+    *   [ ] Không được tự ý sửa đổi code.
+    *   [ ] Phải cập nhật chính xác `retry_count` vào JSON.
+    *   [ ] Mọi báo cáo leo thang lên con người phải tuân thủ đúng định dạng mẫu quy định.
+
+---
+
 ## 3. CƠ CHẾ NÉN NGỮ CẢNH (CONTEXT COMPRESSION PROTOCOL)
 
 Nhằm mục đích ngăn chặn hiện tượng tràn cửa sổ ngữ cảnh (Context Window Overflow) của các tác tử cấp cao (Architect/Leader Agent), hệ thống thiết lập cơ chế nén ngữ cảnh tự động sau mỗi giai đoạn phát triển thành công.
@@ -196,21 +222,37 @@ sequenceDiagram
     participant CA as Coding Agent (Bước 2)
     participant AUD as Auditor Agent (Bước 3)
     participant QA as QA Agent (Bước 4)
+    participant EVAL as QA Evaluator (Bước 4b)
+    participant LEAD as Lead Architect / User
     
     rect rgb(240, 200, 200)
     Note over CA, AUD: Tình huống 1: Bị từ chối tại Rejection Gate (QA-03 / QA-04)
     CA->>AUD: Gửi mã nguồn mới
     Note over AUD: Kiểm tra anti_pattern_registry.md
-    AUD-->>CA: REJECTED + Audit Package JSON (Mã lỗi, vị trí dòng, gợi ý sửa)
-    Note over CA: Nạp JIT Context + Sửa đổi mã nguồn
+    AUD-->>EVAL: REJECTED + Audit Package JSON (Chuyển tiếp lỗi)
+    Note over EVAL: Thẩm định vi phạm & tăng retry_count
+    EVAL-->>CA: Trả lại lỗi kèm ngữ cảnh làm giàu (mitigation_suggestion)
+    Note over CA: Sửa đổi mã nguồn
     end
     
     rect rgb(200, 220, 240)
     Note over CA, QA: Tình huống 2: Thất bại khi chạy thử nghiệm (QA-05 / QA-06)
     AUD->>QA: APPROVED (Mã nguồn hợp lệ tĩnh)
     Note over QA: Chạy Vòng 1, 2, 3
-    QA-->>CA: FAIL + Audit Package JSON (Traceback lỗi runtime, ảnh chụp DOM, mã lỗi ERR-*)
-    Note over CA: Nạp JIT Context + Tái cấu trúc mã nguồn
+    QA-->>EVAL: FAIL + Audit Package JSON (Chuyển tiếp lỗi runtime)
+    Note over EVAL: Thẩm định lỗi thật/ảo dựa trên 13 Specs
+    alt Xác định Lỗi ảo (False Positive)
+        EVAL-->>CA: Hủy báo lỗi & Tự Approve để Merge
+    else Xác định Lỗi thật (True Positive)
+        Note over EVAL: Tăng retry_count & Ghi JIT suggestions
+        alt retry_count <= 3
+            EVAL-->>CA: Trả lại kèm JIT Context (mitigation_suggestion)
+            Note over CA: Tái cấu trúc mã nguồn
+        else retry_count > 3 HOẶC chạm ranh giới Escalation
+            EVAL-->>LEAD: Phát động Escalation Gate + QA Escalation Report
+            Note over LEAD: Xem xét phương án và chỉ đạo phương án sửa
+        end
+    end
     end
 ```
 
@@ -220,10 +262,11 @@ Khi xảy ra lỗi tại bất kỳ QA Checkpoint nào, tác tử phát hiện l
 
 ```json
 {
-  "status": "REJECTED_BY_AUDITOR" | "FAILED_BY_QA",
+  "status": "REJECTED_BY_AUDITOR" | "FAILED_BY_QA" | "ESCALATED_HUMAN",
   "timestamp": "2026-06-16T05:13:00Z",
-  "source_agent": "AntiPatternAuditor" | "WindowsQAAgent",
+  "source_agent": "AntiPatternAuditor" | "WindowsQAAgent" | "QAEvaluator",
   "target_file": "/src/background.js",
+  "retry_count": 1,
   "failures": [
     {
       "code": "ERR-DOM-01" | "ERR-STEALTH-02" | "ERR-SCHEMA-03",
