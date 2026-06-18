@@ -6,11 +6,11 @@
 
 | Metadata | Value |
 |---|---|
-| Version | `1.0.0` |
+| Version | `2.0.0` |
 | Status | `ACTIVE` |
 | Project | Hermes FacePost-Group |
 | Spec Anchor | `facepost_00_shared_types.md` (Single Source of Truth) |
-| Date | 2026-06-16 |
+| Date | 2026-06-18 |
 
 ---
 
@@ -247,6 +247,16 @@ Bộ Harness này được thiết kế theo triết lý **tách rời cấu hì
 
 ---
 
-*Hermes FacePost-Group — Agent Harness v1.0.0*
+## 📈 Nhật Ký Nâng Cấp (Changelog)
+
+### v2.0.0 (2026-06-18) - Isolated Context & Auto Registration Upgrade
+- **Cô Lập Ngữ Cảnh Sống (Isolated Context Cache)**: Loại bỏ file `live_context.md` dùng chung gây xung đột chéo (race condition). Chuyển sang cơ chế tạo file `.context.md` riêng biệt cho từng file nguồn trong thư mục `live_context/cache/`.
+- **Khử Trùng Lặp Chuỗi (Substring Collision Fix)**: Chuyển đổi thuật toán so khớp Spec từ so khớp chứa (`in`) sang so khớp chính xác tuyệt đối sau khi chuẩn hóa đường dẫn (`==`).
+- **Tăng Cường Tính Bền Bỉ (Parser Rigidity Fix)**: Bọc các parser phân tích tracker trong khối `try-except` với nguyên tắc No-Throw Guarantee để chống crash hệ thống khi cấu trúc file Markdown thay đổi nhẹ.
+- **Tự Động Đăng Ký File Mới (Auto File Registration)**: Thêm chức năng CLI `register` tự động phân loại đường dẫn file mới thành các Spec ID tương ứng và chèn trực tiếp vào `context_map.json` một cách thông minh.
+
+---
+
+*Hermes FacePost-Group — Agent Harness v2.0.0*
 *Xem `workflow/4step_assembly.md` để biết chi tiết vận hành.*
 
