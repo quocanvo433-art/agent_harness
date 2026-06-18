@@ -4,11 +4,14 @@
 > Đây là hệ thống điều phối các AI Coding Agent, định nghĩa roles, workflow, harness kiểm tra chất lượng,
 > và cơ chế nạp ngữ cảnh tự động (live context) cho toàn bộ vòng đời phát triển dự án.
 >
+> 🧠 **Kiến trúc Swarm Phi Trạng Thái & Hướng Sự Kiện (Stateless & Event-driven Swarm):**
+> Hệ thống không vận hành các tác tử dưới dạng daemon chạy ngầm liên tục gây lãng phí tài nguyên và ô nhiễm ngữ cảnh chéo. Mọi Agent (Architect, Coding, Auditor, QA, Evaluator) đều được sinh ra (spawn) theo nhu cầu của pipeline sự kiện, thực thi nhiệm vụ cô lập của mình, ra phán quyết/xuất code, rồi tự hủy (terminate). Thiết kế này đảm bảo cửa sổ ngữ cảnh (Context Window) luôn sạch sẽ tuyệt đối và các ranh giới xử lý (Boundaries) được kiểm soát chính xác 100%.
+>
 > 💡 **Tuyên ngôn dự án:** Tác giả dự án là một non-tech hoàn toàn không viết một dòng code nào. Đây là dự án tham vọng chứng minh rằng một mạng lưới Agent tự trị (Agentic Swarm) có thể tự lực gánh vác việc phát triển toàn bộ một sản phẩm phức tạp nếu được vận hành trong một hệ thống chốt chặn và khung kiểm thử (Harness) phù hợp.
 
 | Metadata | Value |
 |---|---|
-| Version | `2.0.0` |
+| Version | `2.1.0` |
 | Status | `ACTIVE` |
 | Project | Hermes FacePost-Group |
 | Creator | Non-Tech (0-line coding author, swarm-driven) |
