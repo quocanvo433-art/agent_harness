@@ -17,18 +17,18 @@ def load_context(source_file_path, workspace_root=None):
     
     # Define paths
     context_map_path = os.path.join(workspace_root, "agent_harness", "live_context", "context_map.json")
-    live_context_path = os.path.join(workspace_root, "agent_harness", "live_context", "live_context.md")
     
-    # Convert workspace root to absolute path
-    abs_workspace = os.path.abspath(workspace_root)
-    
-    # Determine the absolute path of source file
+    # Calculate rel_source_path first to generate a specific context file path for isolation
     abs_source = os.path.abspath(source_file_path)
+    abs_workspace = os.path.abspath(workspace_root)
     if not abs_source.startswith(abs_workspace) and not os.path.isabs(source_file_path):
         abs_source = os.path.abspath(os.path.join(abs_workspace, source_file_path))
-        
-    # Calculate the normalized relative path for the source file (always use /)
     rel_source_path = os.path.relpath(abs_source, abs_workspace).replace("\\", "/")
+    
+    sanitized_filename = rel_source_path.replace("/", "_").replace("\\", "_").replace(".", "_") + ".context.md"
+    live_context_path = os.path.join(workspace_root, "agent_harness", "live_context", "cache", sanitized_filename)
+    
+    # (abs_source and rel_source_path already computed above)
     
     # 1. Read context_map.json configuration
     if not os.path.exists(context_map_path):
@@ -45,13 +45,13 @@ def load_context(source_file_path, workspace_root=None):
     specs_dir = config.get("specs_dir", "specs/")
     mappings = config.get("mappings", [])
     
-    # 2. Search for the corresponding spec mapping
+    # 2. Search for the corresponding spec mapping (So khớp chính xác tuyệt đối sau khi chuẩn hóa)
     matched_mapping = None
+    norm_source = rel_source_path.strip("/")
     for mapping in mappings:
         for source_pattern in mapping.get("source_files", []):
-            # Normalization of pattern just in case
-            norm_pattern = source_pattern.replace("\\", "/")
-            if norm_pattern == rel_source_path or norm_pattern in rel_source_path or rel_source_path in norm_pattern:
+            norm_pattern = source_pattern.replace("\\", "/").strip("/")
+            if norm_pattern == norm_source:
                 matched_mapping = mapping
                 break
         if matched_mapping:
@@ -105,14 +105,15 @@ def load_context(source_file_path, workspace_root=None):
 3. Chú ý các nguyên tắc tối ưu hóa SQLite (WAL mode) khi thay đổi logic DB.
 """
 
-    # 5. Overwrite live_context.md
+    # 5. Overwrite the specific cache context file
     try:
         os.makedirs(os.path.dirname(live_context_path), exist_ok=True)
         with open(live_context_path, "w", encoding="utf-8") as f:
             f.write(live_markdown)
-        print(f"[SUCCESS] Đã nạp thành công ngữ cảnh của [{spec_id}] vào live_context.md")
+        print(f"[SUCCESS] Đã nạp thành công ngữ cảnh của [{spec_id}] vào cache file.")
+        print(f"[CONTEXT_FILE] {os.path.abspath(live_context_path)}")
     except Exception as e:
-        print(f"[ERROR] Lỗi khi ghi file live_context.md: {e}")
+        print(f"[ERROR] Lỗi khi ghi file context: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

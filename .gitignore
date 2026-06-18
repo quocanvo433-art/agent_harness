@@ -15,3 +15,6 @@ Thumbs.db
 tmp/
 scratch/
 temp/
+
+# Cache files
+live_context/cache/

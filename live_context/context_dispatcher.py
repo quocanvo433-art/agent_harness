@@ -88,30 +88,34 @@ WEEK_CONFIGS = {
 }
 
 def load_tracker_parts(tracker_path):
-    with open(tracker_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    # Tìm vị trí của HOTZONE và ARCHIVE
-    hotzone_marker = "## 🔴 HOTZONE"
-    archive_marker = "## 📦 ARCHIVE"
-    
-    parts = content.split(hotzone_marker)
-    if len(parts) < 2:
-        print("[ERROR] Không tìm thấy marker HOTZONE trong tracker.")
+    try:
+        with open(tracker_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Tìm vị trí của HOTZONE và ARCHIVE
+        hotzone_marker = "## 🔴 HOTZONE"
+        archive_marker = "## 📦 ARCHIVE"
+        
+        parts = content.split(hotzone_marker)
+        if len(parts) < 2:
+            print("[ERROR] Không tìm thấy marker HOTZONE trong tracker.")
+            return None
+        
+        part1 = parts[0]
+        rest = parts[1]
+        
+        parts2 = rest.split(archive_marker)
+        if len(parts2) < 2:
+            print("[ERROR] Không tìm thấy marker ARCHIVE trong tracker.")
+            return None
+        
+        hotzone_content = parts2[0]
+        part3 = archive_marker + parts2[1]
+        
+        return part1, hotzone_content, part3
+    except Exception as e:
+        print(f"[ERROR] Lỗi khi xử lý cấu trúc tracker: {e}")
         return None
-    
-    part1 = parts[0]
-    rest = parts[1]
-    
-    parts2 = rest.split(archive_marker)
-    if len(parts2) < 2:
-        print("[ERROR] Không tìm thấy marker ARCHIVE trong tracker.")
-        return None
-    
-    hotzone_content = parts2[0]
-    part3 = archive_marker + parts2[1]
-    
-    return part1, hotzone_content, part3
 
 def parse_hotzone_tasks(hotzone_content):
     tasks = []
@@ -385,8 +389,8 @@ def update_task_status(task_keyword, status, workspace_root):
 def hydrate(source_file, workspace_root):
     """
     Cưỡng bức nạp context:
-    1. Gọi live_context_loader.py để cập nhật live_context.md.
-    2. Đọc live_context.md để verify.
+    1. Gọi live_context_loader.py để cập nhật và tạo file context riêng biệt.
+    2. Đọc kết quả đường dẫn file context cụ thể từ stdout.
     3. Trình bày cảnh báo ép buộc đọc context cho các subagents.
     """
     loader_path = os.path.join(workspace_root, "agent_harness", "live_context", "live_context_loader.py")
@@ -402,19 +406,24 @@ def hydrate(source_file, workspace_root):
         print(f"[ERROR] Chạy live_context_loader thất bại: {result.stderr}")
         sys.exit(1)
         
-    print(result.stdout.strip())
+    stdout_lines = result.stdout.strip().splitlines()
     
-    # Verify live_context.md
-    live_context_path = os.path.join(workspace_root, "agent_harness", "live_context", "live_context.md")
-    if os.path.exists(live_context_path):
+    # Tìm tệp context cụ thể từ stdout
+    context_file_path = None
+    for line in stdout_lines:
+        if line.startswith("[CONTEXT_FILE]"):
+            context_file_path = line.replace("[CONTEXT_FILE]", "").strip()
+        else:
+            print(line)
+            
+    if context_file_path and os.path.exists(context_file_path):
         print("="*60)
-        print("🚨 [FORCED CONTEXT HYDRATION] ĐÃ CƯỠNG BỨC NẠP NGỮ CẢNH THÀNH CÔNG!")
-        print(f"👉 File live_context.md đã được làm mới lúc: {datetime.now().strftime('%H:%M:%S')}")
-        print("🔥 YÊU CẦU BẮT BUỘC: Mọi Agent (coding_agent, qa_agent) PHẢI đọc file này trước khi làm việc!")
+        print("🚨 [FORCED CONTEXT HYDRATION] ĐÃ CƯỠNG BỨC NẠP NGỮ CẢNH CÔ LẬP THÀNH CÔNG!")
+        print(f"👉 File context riêng biệt: {context_file_path}")
+        print("🔥 YÊU CẦU BẮT BUỘC: Agent đang thao tác file này PHẢI đọc file context trên trước khi làm việc!")
         print("="*60)
     else:
-        print("[ERROR] Không tìm thấy file live_context.md sau khi chạy loader.")
-        sys.exit(1)
+        print("[WARNING] Đã chạy loader nhưng không xác định được file context cô lập cụ thể.")
 
 def archive_week(week_num, workspace_root):
     """
