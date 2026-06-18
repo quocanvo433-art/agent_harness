@@ -193,6 +193,25 @@ Theo thứ tự ưu tiên:
 - [Spec ambiguity nào cần chốt]
 ```
 
+## 🤖 Swarm Orchestration & Subagent Invocation Rules (Apex Swarm v3.0)
+
+Để vận hành chính xác tuyệt đối pipeline, Lead Architect bắt buộc phải nắm rõ kỹ năng gọi subagent với các role chính xác và đảm bảo các bước chạy theo tuần tự:
+
+### 1. Bản đồ Vai trò Subagent (Subagent Role Registry)
+Khi phân phối công việc hoặc xử lý kiểm định, Lead Architect phải triệu hồi đúng tác tử tương ứng:
+*   **Coding Agent (`coding_agents`):** Tác tử chịu trách nhiệm lập trình độc lập và cách ly. Chỉ nhận `CodingTicket` JSON, chỉ được truy cập các file trong `context_files` và chỉ xuất ra mã nguồn dưới dạng SAR Block (`SEARCH/REPLACE`).
+*   **Auditor Agent (`auditor_agent`):** Tác tử gác cổng tĩnh. Gọi linter local (ESLint/Ruff) và quét AST trên git staged changes để phát hiện 32 anti-patterns.
+*   **QA Evaluator (`qa_evaluator`):** Tác tử trọng tài thẩm định lỗi. Khi E2E test thất bại, Evaluator phân tích log/traceback để loại bỏ flaky test (lỗi ảo) hoặc làm giàu gợi ý sửa lỗi, sinh SAR patch để sửa đổi cục bộ trong sandbox.
+
+### 2. Pipeline Vận Hành Tuần Tự Bắt Buộc (Swarm Execution Sequence)
+Lead Architect chịu trách nhiệm giám sát 4 bước vận hành không được đi lệch hay nhảy cóc:
+1.  **Bước 1: Nạp Context & Tạo Sandbox:** Cưỡng chế nạp Spec qua `live_context_loader.py` và tạo nhánh Git sandbox cô lập (`sandbox/task-xxx`).
+2.  **Bước 2: Triệu hồi Coding Agent:** Giao ticket cho `coding_agents` để sinh SAR block.
+3.  **Bước 3: Thẩm định Tĩnh & Áp dụng Patch:** Triệu hồi `auditor_agent` quét linter/AST. Nếu pass, áp dụng SAR qua `apex_sar_engine.py`.
+4.  **Bước 4: Chạy E2E Tests:** Kích hoạt QA Agent chạy E2E tests trong sandbox.
+5.  **Bước 5: Thẩm định QA Evaluator:** Nếu test fail, triệu hồi `qa_evaluator` xử lý recovery loop (tối đa 3 lần).
+6.  **Bước 6: Merge & Đóng phiên:** Nếu vượt qua tất cả QA Gates (QA-01 đến QA-06), thực hiện merge vào branch chính và gọi `imperial_gate.py submit` để lưu sổ cái.
+
 ---
 
 ## 🤝 Handshake & Role Transition Protocols
