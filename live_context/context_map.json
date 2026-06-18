@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "project_name": "AI_facepostgroup",
+  "specs_dir": "specs/",
+  "mappings": [
+    {
+      "spec_id": "Spec 00",
+      "spec_file": "facepost_00_shared_types.md",
+      "source_files": []
+    },
+    {
+      "spec_id": "Spec 01",
+      "spec_file": "facepost_01_chrome_extension.md",
+      "source_files": [
+        "extension/manifest.json",
+        "extension/background.js",
+        "extension/content.js",
+        "extension/dom_compressor.js",
+        "extension/offscreen.html",
+        "extension/offscreen.js",
+        "extension/popup.html",
+        "extension/popup.js",
+        "extension/popup.css",
+        "extension/lib/hmac_sha256.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 02",
+      "spec_file": "facepost_02_ai_agent_brain.md",
+      "source_files": [
+        "dashboard/prompt_templates.js",
+        "dashboard/ai_brain.js",
+        "dashboard/session_manager.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 03",
+      "spec_file": "facepost_03_dashboard_app.md",
+      "source_files": [
+        "dashboard/server.js",
+        "dashboard/db.js",
+        "dashboard/schema.sql",
+        "dashboard/campaign_manager.js",
+        "dashboard/src/websocket/wsServer.js",
+        "dashboard/src/routes/groups.js",
+        "dashboard/src/routes/campaigns.js",
+        "dashboard/src/routes/accounts.js",
+        "dashboard/src/routes/system.js",
+        "dashboard/src/routes/keys.js",
+        "dashboard/src/routes/backup.js",
+        "dashboard/src/routes/donations.js",
+        "dashboard/src/routes/slangs.js",
+        "dashboard/src/routes/targetGroups.js",
+        "dashboard/src/routes/content.js",
+        "dashboard/src/services/cleanupService.js",
+        "dashboard/src/services/autoUpdater.js",
+        "dashboard/src/services/backupManager.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 04",
+      "spec_file": "facepost_04_anti_detection.md",
+      "source_files": [
+        "extension/react_state_patcher.js",
+        "extension/human_simulator.js",
+        "dashboard/proxy_rotator.js",
+        "dashboard/chrome_launcher.js",
+        "native_host/hermes_proxy_host.py",
+        "native_host/install_native_host.bat",
+        "native_host/local_proxy_relay.py"
+      ]
+    },
+    {
+      "spec_id": "Spec 05",
+      "spec_file": "facepost_05_agent_loop.md",
+      "source_files": [
+        "extension/agent_loop.js",
+        "dashboard/agent_loop.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 06",
+      "spec_file": "facepost_06_checkpoint_handler.md",
+      "source_files": [
+        "extension/checkpoint_detector.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 07",
+      "spec_file": "facepost_07_dashboard_ui.md",
+      "source_files": [
+        "dashboard/dashboard_ui/LiveAgentGrid.jsx",
+        "dashboard/dashboard_ui/AgentCard.jsx",
+        "dashboard/dashboard_ui/AccountHealthGauge.jsx",
+        "dashboard/dashboard_ui/EmergencyEscalationGateway.jsx",
+        "dashboard/dashboard_ui/RealtimeLogTerminal.jsx",
+        "dashboard/dashboard_ui/DonationModal.jsx",
+        "dashboard/dashboard_ui/VirtualDevBeggar.jsx",
+        "dashboard/dashboard_ui/APIKeyPoolManager.jsx",
+        "dashboard/dashboard_ui/BackupRestorePanel.jsx",
+        "dashboard/dashboard_ui/SystemUpdateBanner.jsx"
+      ]
+    },
+    {
+      "spec_id": "Spec 08",
+      "spec_file": "facepost_08_content_engine.md",
+      "source_files": [
+        "src/content_engine/index.js",
+        "src/content_engine/content_composer.js",
+        "src/content_engine/persona_store.js",
+        "src/content_engine/persona_extractor.js",
+        "src/content_engine/trending_keyword_service.js",
+        "src/content_engine/hidden_context_builder.js",
+        "src/content_engine/content_generator_llm.js",
+        "src/content_engine/humaness_harness.js",
+        "src/content_engine/writing_rules.js",
+        "src/interaction_manager/index.js",
+        "src/interaction_manager/interaction_panel.js",
+        "src/interaction_manager/comment_watcher.js",
+        "src/interaction_manager/comment_reply_agent.js",
+        "src/interaction_manager/reply_context_builder.js",
+        "src/interaction_manager/interaction_store.js",
+        "src/routes/content_engine.js",
+        "src/routes/interactions.js",
+        "dashboard/dashboard_ui/ContentComposer.jsx",
+        "dashboard/dashboard_ui/InteractionPanel.jsx"
+      ]
+    },
+    {
+      "spec_id": "Spec 09",
+      "spec_file": "facepost_09_hybrid_extension.md",
+      "source_files": [
+        "extension_cws/manifest.json",
+        "extension_cws/background.js",
+        "extension_cws/background_safe.js",
+        "extension_cws/content.js",
+        "extension_cws/content_safe.js",
+        "extension_cws/popup_safe.html",
+        "extension_cws/popup_safe.js"
+      ]
+    },
+    {
+      "spec_id": "Spec 10",
+      "spec_file": "facepost_10_desktop_packaging.md",
+      "source_files": [
+        "hermes-desktop/main.js",
+        "hermes-desktop/preload.js",
+        "hermes-desktop/tray.js",
+        "hermes-desktop/package.json",
+        "hermes-desktop/electron-builder.yml",
+        "hermes-desktop/patchUpdater.js",
+        "hermes-desktop/build/installer.nsh",
+        ".github/workflows/release.yml"
+      ]
+    }
+  ]
+}
