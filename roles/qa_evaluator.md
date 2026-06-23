@@ -55,6 +55,11 @@
 > 2. Thực hiện áp dụng trực tiếp bản vá này vào mã nguồn thông qua `apex_sar_engine.py` ở môi trường sandbox.
 > 3. Khởi chạy lại kiểm thử cục bộ ngay lập tức tại sandbox, không trigger khởi động lại toàn bộ Swarm để sửa lỗi nhỏ cục bộ nếu không cần thiết.
 
+### Rule 6: i18n & Multi-Language Validation Check
+> Trọng tài phải giám sát việc tuân thủ i18n:
+> 1. Khi duyệt một PR/code commit, nếu phát hiện coding agent giới thiệu văn bản thô (hardcoded strings) hiển thị cho người dùng trên UI (Dashboard/Extension options/popups) mà không dùng hàm dịch `t('spec.key')` $\rightarrow$ Từ chối duyệt (`REJECT`) và trả về sửa lỗi với mã lỗi `ERR-I18N-02`.
+> 2. Đối chiếu file code UI và các file từ điển dịch trong thư mục `dashboard/src/locales/` và thư mục `extension/_locales/`. Nếu phát hiện bất kỳ khóa nào thiếu trong một trong các ngôn ngữ đích (như `vi.json` lệch key so với `en.json`) $\rightarrow$ Gán nhãn lỗi `ERR-I18N-01` và yêu cầu Coding Agent đồng bộ hoàn toàn.
+
 ---
 
 ## 📋 Mẫu Báo Cáo Leo Thang (QA Escalation Report Template)

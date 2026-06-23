@@ -116,8 +116,8 @@ Dưới đây là sơ đồ tổng quan thể hiện sự phối hợp chặt ch
     *   [ ] Mọi cấu trúc dữ liệu đầu ra phải khớp chính xác với `output_contract`.
     *   [ ] Mỗi file code hoàn thành phải được commit riêng với message chuẩn semantic: `type(scope): description`.
 *   **🛡️ QA Checkpoints cuối giai đoạn:**
-    *   **QA-02 (Syntax & Language Compliance Check):** Chạy parser kiểm tra cú pháp mã nguồn (như ESLint hoặc TypeScript compiler) trước khi lưu file. Loại bỏ các lỗi syntax cơ bản như biến chưa khai báo, dấu ngoặc chưa đóng, hoặc sai kiểu dữ liệu tĩnh.
-    *   **QA-03 (Security & Isolation Boundary Audit):** Quét tĩnh mã nguồn để phát hiện hành vi vi phạm ranh giới cách ly (ví dụ: extension content script import module node `fs` trái phép hoặc gọi API trực tiếp vào cơ sở dữ liệu backend thay vì thông qua WebSocket/API). Đồng thời kiểm tra không có hardcoded secrets (API keys, passwords, connection strings) trong source code và không có file `.env` thật trong Git staging area.
+    *   **QA-02 (Syntax & Language Compliance Check):** Chạy linter kiểm tra cú pháp mã nguồn (như ESLint hoặc TypeScript compiler) trước khi lưu file. Đồng thời chạy script quét i18n tĩnh để phát hiện mọi chuỗi văn bản cứng (hardcoded strings) hiển thị trên UI.
+    *   **QA-03 (Security & Isolation Boundary & i18n Sync Audit):** Quét tĩnh mã nguồn để phát hiện hành vi vi phạm ranh giới cách ly (ví dụ: extension content script import module node `fs` trái phép hoặc gọi API trực tiếp vào cơ sở dữ liệu backend thay vì thông qua WebSocket/API). Đồng thời kiểm tra không có hardcoded secrets (API keys, passwords, connection strings) trong source code, không có file `.env` thật trong Git staging area, và mọi khóa ngôn ngữ được khai báo đầy đủ, đồng bộ trên tất cả các tệp ngôn ngữ `/locales/` (đối chiếu với file gốc `en.json`).
 
 ---
 
