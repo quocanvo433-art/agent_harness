@@ -9,90 +9,44 @@ import sys
 import shutil
 import json
 import re
-import subprocess
+import tempfile
 from datetime import datetime
 
-# Cấu hình các tuần phục vụ cho tính năng "Thư ký" tự động cập nhật HOTZONE
-WEEK_CONFIGS = {
-    1: {
-        "title": "Tuần 1 — Khởi tạo & Thiết kế Spec",
-        "specs": ["facepost_00_shared_types.md"],
-        "qa_gate": "QA-01",
-        "tasks": [
-            "Validate `context_map.json` schema against DESIGN.md",
-            "Test `live_context_loader.py` file→spec mapping",
-            "Tạo Master Plan, Progress Tracker và Rules of Project",
-            "Viết Spec 01→10 (11 specs hoàn chỉnh)",
-            "Thiết lập cấu trúc thư mục Extension và Dashboard app",
-            "Tạo file `manifest.json` chuẩn Manifest V3",
-            "Tạo database SQLite sơ khởi cho Dashboard (`schema.sql`, `db.js`)",
-            "Verify ALL 90 skeleton files exist — 0 missing"
-        ]
-    },
-    2: {
-        "title": "Tuần 2 — Extension Engine",
-        "specs": ["facepost_01_chrome_extension.md"],
-        "qa_gate": "QA-02: DOM ≥92%, Gaussian delay, Bezier cascade",
-        "tasks": [
-            "Implement DOM compressor & extractor (extension/dom_compressor.js)",
-            "Implement WS connection with HMAC-SHA256 authentication (extension/background.js, extension/lib/hmac_sha256.js)",
-            "Implement human simulator with Gaussian delays & Bezier movements (extension/human_simulator.js)",
-            "Implement popup UI and styles (extension/popup.html, extension/popup.css, extension/popup.js)",
-            "Implement Chrome Launcher setup (extension/chrome_launcher.js)"
-        ]
-    },
-    3: {
-        "title": "Tuần 3 — Express Server & Dashboard Route Modules",
-        "specs": ["facepost_03_dashboard_app.md", "facepost_07_dashboard_ui.md"],
-        "qa_gate": "QA-03: REST API tests, SQLite WAL, Spintax",
-        "tasks": [
-            "Implement SQLite database initialization in WAL mode (dashboard/db.js, dashboard/schema.sql)",
-            "Implement wsServer.js for WebSocket connections (dashboard/src/websocket/wsServer.js)",
-            "Implement 10 dashboard API route files (dashboard/src/routes/*.js)",
-            "Implement 3 service modules: cleanup, backup, autoUpdater",
-            "Implement dashboard React UI components and layouts (dashboard/dashboard_ui/*.jsx)"
-        ]
-    },
-    4: {
-        "title": "Tuần 4 — AI Brain, Content Engine & FSM",
-        "specs": ["facepost_02_ai_agent_brain.md", "facepost_05_agent_loop.md", "facepost_08_content_engine.md"],
-        "qa_gate": "QA-04: FSM 9-state, Circuit Breaker, Cosine ≤60%",
-        "tasks": [
-            "Implement AI brain decisions & session manager (dashboard/ai_brain.js, dashboard/session_manager.js)",
-            "Implement 13 Content Engine modules for persona and generation (src/content_engine/*, src/interaction_manager/*)",
-            "Implement content engine & interactions API routes (src/routes/*)",
-            "Implement Agent Loop FSM (9-state, circuit breaker) (extension/agent_loop.js, dashboard/agent_loop.js)",
-            "Implement UI panel components for content & interaction (dashboard/dashboard_ui/ContentComposer.jsx, InteractionPanel.jsx)"
-        ]
-    },
-    5: {
-        "title": "Tuần 5 — Native Proxy Host & Checkpoint Handler",
-        "specs": ["facepost_04_anti_detection.md", "facepost_06_checkpoint_handler.md"],
-        "qa_gate": "QA-05: Proxy E2E <500ms, CHK-01→08 fixtures",
-        "tasks": [
-            "Implement native messaging proxy host (native_host/hermes_proxy_host.py)",
-            "Implement local proxy relay and installation script (native_host/local_proxy_relay.py, install_native_host.bat)",
-            "Implement checkpoint detector for 8 types CHK-01 to CHK-08 (extension/checkpoint_detector.js)"
-        ]
-    },
-    6: {
-        "title": "Tuần 6 — Electron Desktop, CWS Diplomat & CI/CD",
-        "specs": ["facepost_09_hybrid_extension.md", "facepost_10_desktop_packaging.md"],
-        "qa_gate": "QA-06: 5 profiles × 12h, Vision LLM verify",
-        "tasks": [
-            "Build Electron main process, preload & tray integrations (hermes-desktop/*.js)",
-            "Implement hybrid CWS extension safe-modes (extension_cws/*.js, popup_safe.html, popup_safe.js)",
-            "Setup GitHub Actions CI/CD release workflow (.github/workflows/release.yml)"
-        ]
-    }
-}
+# Import load_context directly from live_context_loader
+from live_context_loader import load_context
+
+def get_week_configs(workspace_root):
+    config_path = os.path.join(workspace_root, "agent_harness", "live_context", "sprint_schedule.json")
+    if not os.path.exists(config_path):
+        print(f"[WARNING] Không tìm thấy file cấu hình tuần tại {config_path}. Trả về cấu hình rỗng.")
+        return {}
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            # JSON keys are strings, convert them back to integers
+            return {int(k): v for k, v in data.items()}
+    except Exception as e:
+        print(f"[WARNING] Lỗi khi đọc file cấu hình tuần: {e}")
+        return {}
+
+def write_file_atomic(file_path, content, encoding="utf-8"):
+    dir_name = os.path.dirname(file_path)
+    os.makedirs(dir_name, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", dir=dir_name, encoding=encoding, delete=False) as tf:
+        tf.write(content)
+        temp_name = tf.name
+    try:
+        os.replace(temp_name, file_path)
+    except Exception as e:
+        if os.path.exists(temp_name):
+            os.remove(temp_name)
+        raise e
 
 def load_tracker_parts(tracker_path):
     try:
         with open(tracker_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Sử dụng regex linh hoạt cho cả khoảng trắng, emoji và viết hoa/thường để tăng khả năng chống lỗi
         hotzone_pattern = r"##\s*🔴\s*HOTZONE"
         archive_pattern = r"##\s*📦\s*ARCHIVE"
         
@@ -124,7 +78,6 @@ def parse_hotzone_tasks(hotzone_content):
     for line in hotzone_content.splitlines():
         line_strip = line.strip()
         
-        # Nhận diện vùng task
         if "### 🎯 ĐANG LÀM" in line_strip or "### ✅ ĐÃ XONG" in line_strip:
             in_task_section = True
             continue
@@ -135,7 +88,6 @@ def parse_hotzone_tasks(hotzone_content):
         if in_task_section and (line_strip.startswith("- [ ]") or line_strip.startswith("- [x]")):
             done = line_strip.startswith("- [x]")
             task_text = line_strip[5:].strip()
-            # Bỏ qua dòng trống hoặc placeholder
             if task_text and not task_text.startswith("*(") and not task_text.endswith(")*"):
                 tasks.append({"text": task_text, "done": done})
                 
@@ -152,27 +104,23 @@ def update_tracker_on_archive(week_num, workspace_root):
         return
     part1, hotzone_content, part3 = parts
     
-    # Parse các task thực sự của tuần vừa hoàn tất
-    current_tasks = parse_hotzone_tasks(hotzone_content)
+    week_configs = get_week_configs(workspace_root)
     
-    # Nếu danh sách trống, thử nạp mặc định từ cấu hình tuần vừa rồi
+    current_tasks = parse_hotzone_tasks(hotzone_content)
     if not current_tasks:
-        cfg = WEEK_CONFIGS.get(week_num, {})
+        cfg = week_configs.get(week_num, {})
         for t in cfg.get("tasks", []):
             current_tasks.append({"text": t, "done": True})
             
     done_count = sum(1 for t in current_tasks if t['done'])
     total_count = len(current_tasks) if current_tasks else 1
     
-    # Cấu hình tuần hiện tại
-    current_cfg = WEEK_CONFIGS.get(week_num, {"title": f"Tuần {week_num}", "specs": []})
+    current_cfg = week_configs.get(week_num, {"title": f"Tuần {week_num}", "specs": []})
     week_title = current_cfg["title"]
     specs_links = ", ".join([f"[{s}](file:///{workspace_root.replace('\\\\', '/')}/specs/{s})" for s in current_cfg["specs"]])
     
-    # Danh sách task đã hoàn thành dạng markdown
     tasks_md = "\n".join([f"   - [x] {t['text']}" for t in current_tasks])
     
-    # Tạo archive entry
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     archive_entry = f"""
 <details><summary>✅ {week_title} ({done_count}/{total_count} tasks) — PASSED QA-0{week_num} ✓</summary>
@@ -186,7 +134,6 @@ def update_tracker_on_archive(week_num, workspace_root):
 </details>
 """
 
-    # Chèn vào phần ARCHIVE trong part3
     archive_header = "## 📦 ARCHIVE — TUẦN ĐÃ HOÀN THÀNH"
     placeholder_text = "*(Chưa có tuần hoàn thành — sẽ được nén vào đây sau khi pass QA-01)*"
     
@@ -194,11 +141,15 @@ def update_tracker_on_archive(week_num, workspace_root):
         part3 = part3.replace(placeholder_text, "")
         
     header_idx = part3.find(archive_header)
+    # Sửa lỗi logic: Fallback tìm kiếm tiêu đề chuẩn nếu tiêu đề chi tiết không khớp
+    if header_idx == -1:
+        archive_header = "## 📦 ARCHIVE"
+        header_idx = part3.find(archive_header)
+        
     if header_idx != -1:
         insert_pos = header_idx + len(archive_header)
         part3 = part3[:insert_pos] + "\n" + archive_entry + part3[insert_pos:]
 
-    # Cập nhật bảng "## 📦 Context Archive Registry"
     registry_header = "## 📦 Context Archive Registry"
     registry_placeholder = "| *(Chưa có — sẽ được nén sau khi Tuần 1 pass QA-01)* | | |"
     
@@ -215,7 +166,6 @@ def update_tracker_on_archive(week_num, workspace_root):
                 divider_pos = reg_idx + table_divider_match.end()
                 part3 = part3[:divider_pos] + "\n" + registry_row + part3[divider_pos:]
 
-    # Cập nhật trạng thái spec sang 📦 ARCHIVED trong bảng Specs
     for spec in current_cfg["specs"]:
         pattern = rf"\[{spec}\]\(.*?\| (🟢 ACTIVE|🟢 SPEC DONE)"
         match = re.search(pattern, part3)
@@ -225,17 +175,13 @@ def update_tracker_on_archive(week_num, workspace_root):
             new_match = full_match.replace(status_group, "📦 ARCHIVED")
             part3 = part3.replace(full_match, new_match)
 
-    # Thiết lập HOTZONE tuần tiếp theo
     next_week = week_num + 1
     new_hotzone_content = ""
     if next_week <= 6:
-        next_cfg = WEEK_CONFIGS[next_week]
+        next_cfg = week_configs[next_week]
         next_qa_gate = next_cfg["qa_gate"]
         
-        # Build tasks mặc định
         next_tasks_md = "\n".join([f"- [ ] {t}" for t in next_cfg["tasks"]])
-        
-        # Build specs links
         next_specs_links = "\n".join([f"- [{s}](file:///{workspace_root.replace('\\\\', '/')}/specs/{s})" for s in next_cfg["specs"]])
         
         new_hotzone_content = f"""
@@ -267,10 +213,11 @@ def update_tracker_on_archive(week_num, workspace_root):
 """
 
     new_content = part1 + "## 🔴 HOTZONE — ĐANG THỰC THI\n" + new_hotzone_content + "\n---\n\n" + part3
-    with open(tracker_path, "w", encoding="utf-8") as f:
-        f.write(new_content)
-        
-    print(f"[SUCCESS] Đã tự động cập nhật Progress Tracker sang Tuần {next_week if next_week <= 6 else 'Hoàn Thành'}!")
+    try:
+        write_file_atomic(tracker_path, new_content, encoding="utf-8")
+        print(f"[SUCCESS] Đã tự động cập nhật Progress Tracker sang Tuần {next_week if next_week <= 6 else 'Hoàn Thành'}!")
+    except Exception as e:
+        print(f"[ERROR] Không thể cập nhật Progress Tracker: {e}")
 
 def update_task_status(task_keyword, status, workspace_root):
     tracker_path = os.path.join(workspace_root, "facepost_progress_tracker.md")
@@ -278,163 +225,96 @@ def update_task_status(task_keyword, status, workspace_root):
         print(f"[ERROR] Không tìm thấy tracker tại {tracker_path}")
         sys.exit(1)
         
-    parts = load_tracker_parts(tracker_path)
-    if not parts:
+    try:
+        with open(tracker_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        print(f"[ERROR] Lỗi khi đọc tracker: {e}")
         sys.exit(1)
-    part1, hotzone_content, part3 = parts
-    
-    # Parse tuần hiện tại
-    week_match = re.search(r"\*\*Tuần:\*\* (\d+)/6", hotzone_content)
-    week_num = int(week_match.group(1)) if week_match else 1
-    
-    # Parse QA Gate hiện tại
-    qa_match = re.search(r"\*\*QA Gate:\*\* (.*?) \|", hotzone_content)
-    qa_gate = qa_match.group(1) if qa_match else f"QA-0{week_num}"
-    
-    # Parse deadline hiện tại
-    deadline_match = re.search(r"\*\*Deadline:\*\* (.*?)$", hotzone_content, re.MULTILINE)
-    deadline = deadline_match.group(1) if deadline_match else "Hoàn thành trong phiên này"
-    
-    # Parse các context hiện tại
-    context_section = ""
-    context_match = re.search(r"### 🔑 CONTEXT BẮT BUỘC.*?(### 🚪|$)", hotzone_content, re.DOTALL)
-    if context_match:
-        context_section = context_match.group(0).replace("### 🚪", "").strip()
         
-    # Parse QA exit criteria hiện tại
-    qa_criteria_section = ""
-    qa_crit_match = re.search(r"### 🚪 QA-.*$", hotzone_content, re.DOTALL)
-    if qa_crit_match:
-        qa_criteria_section = qa_crit_match.group(0).strip()
+    # Regex chia tracker lấy nguyên block HOTZONE để sửa đổi cục bộ
+    hotzone_pattern = r"(##\s*🔴\s*HOTZONE[\s\S]*?)(##\s*📦\s*ARCHIVE|$)"
+    match = re.search(hotzone_pattern, content, flags=re.IGNORECASE)
+    if not match:
+        print("[ERROR] Không tìm thấy vùng HOTZONE trong tracker.")
+        sys.exit(1)
         
-    # Parse các task THỰC SỰ
-    tasks = parse_hotzone_tasks(hotzone_content)
+    hotzone_full = match.group(1)
+    start_idx = match.start(1)
+    end_idx = match.end(1)
     
-    # Nếu danh sách trống, nạp mặc định từ tuần hiện tại
-    if not tasks:
-        cfg = WEEK_CONFIGS.get(week_num, {})
-        for t in cfg.get("tasks", []):
-            tasks.append({"text": t, "done": False})
-            
-    # Cập nhật trạng thái task khớp với keyword
-    found = False
+    # Cập nhật trạng thái task trong hotzone_full
     status_done = status.lower() in ["done", "x", "fixed", "completed", "yes", "true"]
+    new_checkbox = "- [x]" if status_done else "- [ ]"
     
-    # Hàm clean text để so khớp (bỏ qua dấu backtick)
+    lines = hotzone_full.splitlines()
+    found = False
+    
     def clean_text(t):
         return t.replace("`", "").lower()
         
     keyword_clean = task_keyword.replace("`", "").lower()
     
-    for t in tasks:
-        if keyword_clean in clean_text(t["text"]):
-            t["done"] = status_done
-            found = True
-            print(f"[TASK] Đã cập nhật trạng thái task: '{t['text']}' -> {'HOÀN THÀNH' if status_done else 'CẦN LÀM'}")
-            
-            # Tự động đăng ký file mới vào context_map khi task hoàn thành (Apex Swarm v3.0)
-            if status_done:
-                # Tìm các đường dẫn file tiềm năng trong task text (ví dụ: dashboard/db.js)
-                file_candidates = re.findall(r"[\w\-./]+\.(?:js|jsx|py|html|css|sql|yml|json|md)", t["text"])
-                for fc in file_candidates:
-                    fc_clean = fc.strip("`'\"()[]*")
-                    full_path = os.path.join(workspace_root, fc_clean)
-                    if os.path.exists(full_path) and os.path.isfile(full_path):
-                        print(f"[AUTO-REGISTER] Tự động phát hiện file mới từ task: {fc_clean}")
-                        register_file(full_path, workspace_root)
-            
+    for i, line in enumerate(lines):
+        if line.strip().startswith("- [ ]") or line.strip().startswith("- [x]"):
+            task_part = line.split("]", 1)[1].strip()
+            if keyword_clean in clean_text(task_part):
+                lines[i] = re.sub(r"-\s*\[\s*[ xX]?\s*\]", new_checkbox, line, count=1)
+                found = True
+                print(f"[TASK] Đã cập nhật trạng thái task: '{task_part}' -> {'HOÀN THÀNH' if status_done else 'CẦN LÀM'}")
+                
+                # Tự động đăng ký file mới vào context_map khi task hoàn thành (nhập động)
+                if status_done:
+                    file_candidates = re.findall(r"[\w\-./]+\.(?:js|jsx|py|html|css|sql|yml|json|md)", task_part)
+                    for fc in file_candidates:
+                         fc_clean = fc.strip("`'\"()[]*")
+                         full_path = os.path.join(workspace_root, fc_clean)
+                         if os.path.exists(full_path) and os.path.isfile(full_path):
+                             print(f"[AUTO-REGISTER] Tự động phát hiện file mới từ task: {fc_clean}")
+                             register_file(full_path, workspace_root)
+                break
+                
     if not found:
         print(f"[WARNING] Không tìm thấy task nào chứa từ khóa '{task_keyword}' trong HOTZONE.")
+        return
         
-    # Tính toán lại tiến độ
-    done_count = sum(1 for t in tasks if t['done'])
-    total_count = len(tasks)
-    percent = int((done_count / total_count) * 100) if total_count > 0 else 0
-    progress_bar = '█' * int(percent / 5) + '░' * (20 - int(percent / 5))
-    
-    # Build danh sách task ĐANG LÀM
-    active_tasks = [t for t in tasks if not t["done"]]
-    active_tasks_md = "\n".join([f"- [ ] {t['text']}" for t in active_tasks]) if active_tasks else "- *(Không có active task nào)*"
-    
-    # Build danh sách task ĐÃ XONG
-    completed_tasks = [t for t in tasks if t["done"]]
-    completed_tasks_md = "\n".join([f"- [x] {t['text']}" for t in completed_tasks]) if completed_tasks else "- *(Chưa có task nào hoàn thành)*"
-    
-    # Tự động đồng bộ với config của tuần nếu thiếu các mục context/QA criteria
-    if not context_section:
-        cfg = WEEK_CONFIGS.get(week_num, {})
-        next_specs_links = "\n".join([f"- [{s}](file:///{workspace_root}/specs/{s})" for s in cfg.get("specs", [])])
-        context_section = f"""### 🔑 CONTEXT BẮT BUỘC (Leader + Coding Agent phải nạp)
-- [Spec 00 — Canonical Protocol Registry](file:///{workspace_root}/specs/facepost_00_shared_types.md)
-{next_specs_links}"""
-
-    if not qa_criteria_section:
-        qa_criteria_section = f"""### 🚪 QA-0{week_num} EXIT CRITERIA
-- [ ] Tích hợp và pass tất cả các tiêu chuẩn của QA-0{week_num}"""
+    # Tính toán lại tiến độ và cập nhật Progress Bar trong hotzone_full
+    updated_tasks = []
+    for line in lines:
+        if line.strip().startswith("- [ ]") or line.strip().startswith("- [x]"):
+            done = line.strip().startswith("- [x]")
+            updated_tasks.append(done)
+            
+    if updated_tasks:
+        done_count = sum(1 for d in updated_tasks if d)
+        total_count = len(updated_tasks)
+        percent = int((done_count / total_count) * 100)
+        progress_bar = '█' * int(percent / 5) + '░' * (20 - int(percent / 5))
         
-    new_hotzone_content = f"""
-> [NOTE]
-> **Tuần:** {week_num}/6 | **QA Gate:** {qa_gate} | **Deadline:** {deadline}
-> **Tiến độ:** {progress_bar} {percent}% ({done_count}/{total_count} tasks)
-
-### 🎯 ĐANG LÀM (Active Tasks)
-{active_tasks_md}
-
-### ✅ ĐÃ XONG (Completed in current sprint)
-{completed_tasks_md}
-
-### ⚡ BLOCKER (nếu có)
-- *(Không có blocker)*
-
-{context_section}
-
-{qa_criteria_section}
-"""
+        for i, line in enumerate(lines):
+            if "**Tiến độ:**" in line:
+                lines[i] = f"> **Tiến độ:** {progress_bar} {percent}% ({done_count}/{total_count} tasks)"
+                break
+                
+    new_hotzone = "\n".join(lines) + "\n"
+    updated_content = content[:start_idx] + new_hotzone + content[end_idx:]
     
-    new_content = part1 + "## 🔴 HOTZONE — ĐANG THỰC THI\n" + new_hotzone_content + "\n---\n\n" + part3
-    with open(tracker_path, "w", encoding="utf-8") as f:
-        f.write(new_content)
-        
-    print(f"[SUCCESS] Đã cập nhật tiến độ HOTZONE thành công: {percent}% ({done_count}/{total_count} tasks)!")
+    try:
+        write_file_atomic(tracker_path, updated_content, encoding="utf-8")
+        print(f"[SUCCESS] Đã cập nhật tiến độ HOTZONE nguyên tử thành công!")
+    except Exception as e:
+        print(f"[ERROR] Không thể cập nhật tracker: {e}")
+        sys.exit(1)
 
 def hydrate(source_file, workspace_root):
     """
-    Cưỡng bức nạp context:
-    1. Gọi live_context_loader.py để cập nhật và tạo file context riêng biệt.
-    2. Đọc kết quả đường dẫn file context cụ thể từ stdout.
-    3. Trình bày cảnh báo ép buộc đọc context cho các subagents.
+    Cưỡng bức nạp context bằng hàm load_context trực tiếp
     """
-    loader_path = os.path.join(workspace_root, "agent_harness", "live_context", "live_context_loader.py")
-    if not os.path.exists(loader_path):
-        print(f"[ERROR] Không tìm thấy loader tại {loader_path}")
+    try:
+        load_context(source_file, workspace_root)
+    except Exception as e:
+        print(f"[ERROR] Chạy live_context_loader thất bại: {e}")
         sys.exit(1)
-        
-    # Chạy loader
-    cmd = [sys.executable, loader_path, source_file, workspace_root]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    if result.returncode != 0:
-        print(f"[ERROR] Chạy live_context_loader thất bại: {result.stderr}")
-        sys.exit(1)
-        
-    stdout_lines = result.stdout.strip().splitlines()
-    
-    # Tìm tệp context cụ thể từ stdout
-    context_file_path = None
-    for line in stdout_lines:
-        if line.startswith("[CONTEXT_FILE]"):
-            context_file_path = line.replace("[CONTEXT_FILE]", "").strip()
-        else:
-            print(line)
-            
-    if context_file_path and os.path.exists(context_file_path):
-        print("="*60)
-        print("🚨 [FORCED CONTEXT HYDRATION] ĐÃ CƯỠNG BỨC NẠP NGỮ CẢNH CÔ LẬP THÀNH CÔNG!")
-        print(f"👉 File context riêng biệt: {context_file_path}")
-        print("🔥 YÊU CẦU BẮT BUỘC: Agent đang thao tác file này PHẢI đọc file context trên trước khi làm việc!")
-        print("="*60)
-    else:
-        print("[WARNING] Đã chạy loader nhưng không xác định được file context cô lập cụ thể.")
 
 def archive_week(week_num, workspace_root):
     """
@@ -445,17 +325,9 @@ def archive_week(week_num, workspace_root):
     archive_dir = os.path.join(workspace_root, "agent_harness", "live_context", "archive")
     os.makedirs(archive_dir, exist_ok=True)
     
-    # Định nghĩa mapping của tuần sang các files spec cần nén
-    week_specs = {
-        1: ["facepost_00_shared_types.md"],
-        2: ["facepost_01_chrome_extension.md"],
-        3: ["facepost_03_dashboard_app.md", "facepost_07_dashboard_ui.md"],
-        4: ["facepost_02_ai_agent_brain.md", "facepost_05_agent_loop.md", "facepost_08_content_engine.md"],
-        5: ["facepost_04_anti_detection.md", "facepost_06_checkpoint_handler.md"],
-        6: ["facepost_09_hybrid_extension.md", "facepost_10_desktop_packaging.md"]
-    }
+    week_configs = get_week_configs(workspace_root)
+    specs_to_archive = week_configs.get(week_num, {}).get("specs")
     
-    specs_to_archive = week_specs.get(week_num)
     if not specs_to_archive:
         print(f"[ERROR] Không tìm thấy cấu hình specs cho Tuần {week_num}")
         sys.exit(1)
@@ -468,16 +340,22 @@ def archive_week(week_num, workspace_root):
             print(f"[WARNING] File spec {spec_name} không tồn tại để nén. Bỏ qua.")
             continue
             
+        # Kiểm tra xem file spec gốc đã ở trạng thái archive (bị nén) chưa để tránh ghi đè phá hủy dữ liệu gốc
+        with open(src_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        if "Status:** 📦 ARCHIVED" in content or "Status: 📦 ARCHIVED" in content:
+            print(f"[WARNING] File đặc tả {spec_name} đã được nén/lưu trữ từ trước. Bỏ qua để tránh mất dữ liệu.")
+            continue
+            
         # 1. Copy sang archive dưới dạng .legacy.md
         legacy_name = spec_name.replace(".md", ".legacy.md")
         dest_path = os.path.join(archive_dir, legacy_name)
         shutil.copy2(src_path, dest_path)
         print(f"   [COPY] Đã lưu trữ bản sao chi tiết: specs/{spec_name} -> archive/{legacy_name}")
         
-        # 2. Đọc file spec gốc để trích xuất header tiêu đề
-        with open(src_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            
+        # 2. Lấy tiêu đề gốc
+        lines = content.splitlines()
         title = lines[0].strip() if lines else f"# Spec: {spec_name}"
         
         # 3. Tạo file tóm tắt rút gọn (Anchor Summary) đè lên file spec gốc
@@ -498,14 +376,14 @@ def archive_week(week_num, workspace_root):
 2. **Quy tắc bảo mật:** Bắt buộc tuân thủ Hiến pháp `AGENTS.md` và các checkpoints kiểm soát an ninh chéo.
 3. **API Contracts:** Mọi endpoint và tin nhắn WebSocket phải khớp chính xác với đặc tả đã lưu tại tệp `.legacy.md`.
 """
-        with open(src_path, "w", encoding="utf-8") as f:
-            f.write(anchor_summary)
-            
-        print(f"   [COMPRESS] Đã nén thành công tệp gốc: specs/{spec_name} (dung lượng đã giảm >95%)")
+        try:
+            write_file_atomic(src_path, anchor_summary, encoding="utf-8")
+            print(f"   [COMPRESS] Đã nén thành công tệp gốc: specs/{spec_name} (dung lượng đã giảm >95%)")
+        except Exception as e:
+            print(f"[ERROR] Lỗi khi ghi đè file spec {spec_name}: {e}")
+            sys.exit(1)
         
     print(f"[SUCCESS] Đã hoàn tất đóng gói và tối ưu hóa context cho Tuần {week_num}!")
-    
-    # 4. Tự động gọi thư ký cập nhật progress tracker
     update_tracker_on_archive(week_num, workspace_root)
 
 def register_file(source_file, workspace_root):
@@ -559,13 +437,21 @@ def register_file(source_file, workspace_root):
         print(f"[ERROR] Lỗi khi đọc file cấu hình: {e}")
         sys.exit(1)
         
-    # 3. Chèn file vào spec_id tương ứng
+    # 3. Chèn file vào spec_id tương ứng sau khi kiểm tra không bị map trùng chéo ở spec khác
     mappings = config.get("mappings", [])
+    
+    # Kiểm tra xem file đã được map chéo ở spec nào khác chưa
+    for m in mappings:
+        if m.get("spec_id") != spec_id:
+            norm_files = [f.replace("\\", "/").strip("/") for f in m.get("source_files", [])]
+            if rel_path.strip("/") in norm_files:
+                print(f"[WARNING] File '{rel_path}' đã được map chéo ở spec '{m.get('spec_id')}'. Bỏ qua để tránh duplicate.")
+                return
+
     found = False
     for mapping in mappings:
         if mapping.get("spec_id") == spec_id:
             source_files = mapping.get("source_files", [])
-            # Chuẩn hóa tên file để kiểm tra trùng lặp
             norm_files = [f.replace("\\", "/").strip("/") for f in source_files]
             norm_new = rel_path.strip("/")
             if norm_new not in norm_files:
@@ -582,10 +468,9 @@ def register_file(source_file, workspace_root):
         print(f"[ERROR] Không tìm thấy Spec ID '{spec_id}' trong context_map.json")
         sys.exit(1)
         
-    # 4. Ghi lại context_map.json
+    # 4. Ghi lại context_map.json nguyên tử
     try:
-        with open(context_map_path, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+        write_file_atomic(context_map_path, json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as e:
         print(f"[ERROR] Không thể ghi context_map.json: {e}")
         sys.exit(1)
@@ -612,6 +497,9 @@ if __name__ == "__main__":
     if not workspace:
         workspace = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         
+    # Thêm đường dẫn workspace/agent_harness/live_context vào PATH để load context_loader.py khi chạy script
+    sys.path.append(os.path.join(workspace, "agent_harness", "live_context"))
+    
     if cmd == "hydrate":
         hydrate(arg2, workspace)
     elif cmd == "archive":
@@ -628,4 +516,3 @@ if __name__ == "__main__":
     else:
         print(f"[ERROR] Lệnh không hợp lệ: {cmd}")
         sys.exit(1)
-

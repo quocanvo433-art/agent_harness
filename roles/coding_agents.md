@@ -26,6 +26,22 @@ Mỗi Coding Agent **chỉ được đọc**:
 | `backend_worker` | AD-05 (DB Schema), Phần 3 (Message Types), Phần 5 (Error Codes) |
 | `network_worker` | AD-03 (LocalProxyRelay), Phần 5 (Error Codes ERR-PRX-*) |
 
+### 🔑 Quy Trình Tạo Biên Nhận Ngữ Cảnh Bằng Mã Băm SHA-256 (Context Receipt Protocol)
+- **Yêu cầu bắt buộc lúc runtime:** Khi khởi chạy và nạp các tệp ngữ cảnh được liệt kê trong trường `context_files` của Coding Ticket, Coding Agent bắt buộc phải tính toán mã băm SHA-256 thực tế của các tệp này tại thời điểm nạp.
+- **Tạo tệp biên nhận:** Mọi Coding Agent phải tự động ghi lại danh sách các tệp đã nạp kèm mã băm SHA-256 tương ứng vào tệp JSON có tên `context_receipt.json` và đặt nó ở cùng thư mục đầu ra của gói bàn giao (`Feature Delivery Package`).
+- **Cấu trúc tệp `context_receipt.json`:**
+  ```json
+  {
+    "ticket_id": "TICKET-NNN",
+    "loaded_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "receipts": {
+      "specs/facepost_08_content_engine.md": "a1b2c3d4e5f6...",
+      "specs/facepost_00_shared_types.md": "7d4e3f1a9b..."
+    }
+  }
+  ```
+- **Hệ quả của sự sai lệch:** Nếu tệp `context_receipt.json` này bị thiếu hoặc có bất kỳ mã băm nào không trùng khớp với trường `context_fingerprints` trong Coding Ticket, gói bàn giao sẽ bị hệ thống tự động REJECT mà không cần người dùng duyệt thủ công.
+
 ### ⚠️ Nghiêm Cấm Bypass IDE & Tự Động Ghi Đè Code Trực Tiếp (IDE Bypass Ban)
 - **Ranh giới thực thi:** Coding Agents tuyệt đối không được tự ý thực thi các lệnh Terminal/Tool tự động (như script python, bash, sed, hoặc các công cụ tự động áp dụng giải pháp khác...) để ghi đè, sửa đổi trực tiếp mã nguồn hoặc các file đặc tả trong dự án.
 - **Quy trình kiểm duyệt bắt buộc:** Mọi chỉnh sửa mã nguồn hoặc tài liệu đặc tả đều phải thông qua giao diện Native IDE bằng các tool `replace_file_content` hoặc `multi_replace_file_content` để Leader (Người dùng) kiểm duyệt trực tiếp qua bảng Render Diff (Accept/Reject từng dòng).

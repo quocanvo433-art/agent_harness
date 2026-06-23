@@ -67,9 +67,13 @@ Theo thứ tự ưu tiên:
 > - Error codes (Phần 5): không dùng code tự đặt
 > - SQLite schema (AD-05): không thêm column ngoài spec
 
-### Rule 7: One task, one agent & Context Isolation
+### Rule 7: One task, one agent & Context Isolation (Với Xác Minh Vân Tay SHA-256)
 > Không giao task chéo module cho cùng một Coding Agent.
-> **Cô lập ngữ cảnh tuyệt đối (Context Isolation):** Mỗi Coding Agent chỉ được phép truy cập và đọc các file được chỉ định rõ trong trường `context_files` của Coding Ticket của mình. Nghiêm cấm Coding Agent đọc chéo context, file nguồn, hoặc ticket của các agent/module khác để tránh rò rỉ và ô nhiễm ngữ cảnh (context pollution). Mọi giao tiếp giữa các agent phải thông qua interface rõ ràng, không chia sẻ file log hoạt động nội bộ.
+> **Cô lập ngữ cảnh tuyệt đối (Context Isolation):** Mỗi Coding Agent chỉ được phép truy cập và đọc các file được chỉ định rõ trong trường `context_files` của Coding Ticket của mình. Nghiêm cấm Coding Agent đọc chéo context, file nguồn, hoặc ticket của các agent/module khác để tránh rò rỉ và ô nhiễm ngữ cảnh (context pollution).
+> **Xác minh Ngữ cảnh Tác tử (Subagent Context Verification):** 
+> 1. Khi tạo `CodingTicket`, Lead Architect bắt buộc phải tính toán mã băm SHA-256 của các tệp được chỉ định trong `context_files` và ghi nhận chúng vào trường `context_fingerprints` (ánh xạ đường dẫn tệp -> mã băm SHA-256 tương ứng tại thời điểm phát hành ticket).
+> 2. Khi nhận bàn giao `Feature Delivery Package` từ Coding Agent, Lead Architect bắt buộc phải đối chiếu chéo tệp `context_receipt.json` (do Coding Agent tự sinh khi nạp ngữ cảnh lúc runtime) với trường `context_fingerprints` trong ticket gốc.
+> 3. Nếu phát hiện bất kỳ mã băm nào bị sai lệch hoặc thiếu tệp ngữ cảnh đã chỉ định, Lead Architect bắt buộc phải từ chối (REJECT) gói bàn giao đó và yêu cầu chạy lại quy trình nạp ngữ cảnh mà không cần phải tự đọc trực tiếp nội dung tệp ngữ cảnh của subagent.
 > `extension_worker` chỉ làm Extension code.
 > `backend_worker` chỉ làm Node.js Dashboard code.
 > `network_worker` chỉ làm Python proxy code.
@@ -143,6 +147,10 @@ Theo thứ tự ưu tiên:
     "specs/facepost_08_content_engine.md",
     "specs/facepost_00_shared_types.md#Section-5"
   ],
+  "context_fingerprints": {
+    "specs/facepost_08_content_engine.md": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2",
+    "specs/facepost_00_shared_types.md#Section-5": "f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8e7d6c5b4a3f2e1"
+  },
   "notes": "Xem anti-pattern AP-12 — không để LLM output đi thẳng vào kết quả"
 }
 ```
@@ -158,6 +166,7 @@ Theo thứ tự ưu tiên:
 | `error_codes_to_handle` | Phải là codes từ `harness/error_code_registry.md` |
 | `assigned_to` | Phải là `extension_worker`, `backend_worker`, hoặc `network_worker` |
 | `forbidden_patterns` | Tham chiếu AP-ID từ anti_pattern_registry nếu có |
+| `context_fingerprints` | Ánh xạ từ file path trong `context_files` sang mã băm SHA-256 tương ứng tại thời điểm phát hành |
 
 ---
 

@@ -1,0 +1,73 @@
+{
+  "1": {
+    "title": "Tuần 1 — Khởi tạo & Thiết kế Spec",
+    "specs": ["facepost_00_shared_types.md"],
+    "qa_gate": "QA-01",
+    "tasks": [
+      "Validate `context_map.json` schema against DESIGN.md",
+      "Test `live_context_loader.py` file→spec mapping",
+      "Tạo Master Plan, Progress Tracker và Rules of Project",
+      "Viết Spec 01→10 (11 specs hoàn chỉnh)",
+      "Thiết lập cấu trúc thư mục Extension và Dashboard app",
+      "Tạo file `manifest.json` chuẩn Manifest V3",
+      "Tạo database SQLite sơ khởi cho Dashboard (`schema.sql`, `db.js`)",
+      "Verify ALL 90 skeleton files exist — 0 missing"
+    ]
+  },
+  "2": {
+    "title": "Tuần 2 — Extension Engine",
+    "specs": ["facepost_01_chrome_extension.md"],
+    "qa_gate": "QA-02: DOM ≥92%, Gaussian delay, Bezier cascade",
+    "tasks": [
+      "Implement DOM compressor & extractor (extension/dom_compressor.js)",
+      "Implement WS connection with HMAC-SHA256 authentication (extension/background.js, extension/lib/hmac_sha256.js)",
+      "Implement human simulator with Gaussian delays & Bezier movements (extension/human_simulator.js)",
+      "Implement popup UI and styles (extension/popup.html, extension/popup.css, extension/popup.js)",
+      "Implement Chrome Launcher setup (extension/chrome_launcher.js)"
+    ]
+  },
+  "3": {
+    "title": "Tuần 3 — Express Server & Dashboard Route Modules",
+    "specs": ["facepost_03_dashboard_app.md", "facepost_07_dashboard_ui.md"],
+    "qa_gate": "QA-03: REST API tests, SQLite WAL, Spintax",
+    "tasks": [
+      "Implement SQLite database initialization in WAL mode (dashboard/db.js, dashboard/schema.sql)",
+      "Implement wsServer.js for WebSocket connections (dashboard/src/websocket/wsServer.js)",
+      "Implement 10 dashboard API route files (dashboard/src/routes/*.js)",
+      "Implement 3 service modules: cleanup, backup, autoUpdater",
+      "Implement dashboard React UI components and layouts (dashboard/dashboard_ui/*.jsx)"
+    ]
+  },
+  "4": {
+    "title": "Tuần 4 — AI Brain, Content Engine & FSM",
+    "specs": ["facepost_02_ai_agent_brain.md", "facepost_05_agent_loop.md", "facepost_08_content_engine.md"],
+    "qa_gate": "QA-04: FSM 9-state, Circuit Breaker, Cosine ≤60%",
+    "tasks": [
+      "Implement AI brain decisions & session manager (dashboard/ai_brain.js, dashboard/session_manager.js)",
+      "Implement 13 Content Engine modules for persona and generation (src/content_engine/*, src/interaction_manager/*)",
+      "Implement content engine & interactions API routes (src/routes/*)",
+      "Implement Agent Loop FSM (9-state, circuit breaker) (extension/agent_loop.js, dashboard/agent_loop.js)",
+      "Implement UI panel components for content & interaction (dashboard/dashboard_ui/ContentComposer.jsx, InteractionPanel.jsx)"
+    ]
+  },
+  "5": {
+    "title": "Tuần 5 — Native Proxy Host & Checkpoint Handler",
+    "specs": ["facepost_04_anti_detection.md", "facepost_06_checkpoint_handler.md"],
+    "qa_gate": "QA-05: Proxy E2E <500ms, CHK-01→08 fixtures",
+    "tasks": [
+      "Implement native messaging proxy host (native_host/hermes_proxy_host.py)",
+      "Implement local proxy relay and installation script (native_host/local_proxy_relay.py, install_native_host.bat)",
+      "Implement checkpoint detector for 8 types CHK-01 to CHK-08 (extension/checkpoint_detector.js)"
+    ]
+  },
+  "6": {
+    "title": "Tuần 6 — Electron Desktop, CWS Diplomat & CI/CD",
+    "specs": ["facepost_09_hybrid_extension.md", "facepost_10_desktop_packaging.md"],
+    "qa_gate": "QA-06: 5 profiles × 12h, Vision LLM verify",
+    "tasks": [
+      "Build Electron main process, preload & tray integrations (hermes-desktop/*.js)",
+      "Implement hybrid CWS extension safe-modes (extension_cws/*.js, popup_safe.html, popup_safe.js)",
+      "Setup GitHub Actions CI/CD release workflow (.github/workflows/release.yml)"
+    ]
+  }
+}

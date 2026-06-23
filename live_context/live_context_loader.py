@@ -8,6 +8,8 @@ import os
 import sys
 import json
 import re
+import tempfile
+import ast
 from datetime import datetime
 
 def read_file_safe(path):
@@ -16,6 +18,70 @@ def read_file_safe(path):
             return f.read()
     except Exception as e:
         return f"⚠️ [LỖI] Không thể đọc nội dung: {e}"
+
+def write_file_atomic(file_path, content, encoding="utf-8"):
+    dir_name = os.path.dirname(file_path)
+    os.makedirs(dir_name, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", dir=dir_name, encoding=encoding, delete=False) as tf:
+        tf.write(content)
+        temp_name = tf.name
+    try:
+        os.replace(temp_name, file_path)
+    except Exception as e:
+        if os.path.exists(temp_name):
+            os.remove(temp_name)
+        raise e
+
+def get_python_dependencies(content, dir_path, abs_workspace):
+    dependencies = []
+    try:
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    parts = alias.name.split('.')
+                    # Try resolving relative to dir_path
+                    test_path_module = os.path.join(dir_path, *parts) + ".py"
+                    if os.path.exists(test_path_module) and os.path.isfile(test_path_module):
+                        rel = os.path.relpath(test_path_module, abs_workspace).replace("\\", "/")
+                        dependencies.append(rel)
+                    else:
+                        test_path_pkg = os.path.join(dir_path, parts[0] + ".py")
+                        if os.path.exists(test_path_pkg) and os.path.isfile(test_path_pkg):
+                            rel = os.path.relpath(test_path_pkg, abs_workspace).replace("\\", "/")
+                            dependencies.append(rel)
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    parts = node.module.split('.')
+                    if node.level > 0:
+                        # relative import, e.g. from .utils import database
+                        target_dir = dir_path
+                        for _ in range(node.level - 1):
+                            target_dir = os.path.dirname(target_dir)
+                        test_path_mod = os.path.join(target_dir, *parts) + ".py"
+                        if os.path.exists(test_path_mod) and os.path.isfile(test_path_mod):
+                            rel = os.path.relpath(test_path_mod, abs_workspace).replace("\\", "/")
+                            dependencies.append(rel)
+                    else:
+                        # absolute import
+                        test_path_mod = os.path.join(dir_path, *parts) + ".py"
+                        if os.path.exists(test_path_mod) and os.path.isfile(test_path_mod):
+                            rel = os.path.relpath(test_path_mod, abs_workspace).replace("\\", "/")
+                            dependencies.append(rel)
+                else:
+                    # from . import name
+                    if node.level > 0:
+                        target_dir = dir_path
+                        for _ in range(node.level - 1):
+                            target_dir = os.path.dirname(target_dir)
+                        for alias in node.names:
+                            test_path_name = os.path.join(target_dir, alias.name + ".py")
+                            if os.path.exists(test_path_name) and os.path.isfile(test_path_name):
+                                rel = os.path.relpath(test_path_name, abs_workspace).replace("\\", "/")
+                                dependencies.append(rel)
+    except Exception as e:
+        print(f"[WARNING] AST parse failed for Python file: {e}")
+    return dependencies
 
 def get_file_dependencies(source_file_path, abs_workspace):
     """
@@ -30,42 +96,38 @@ def get_file_dependencies(source_file_path, abs_workspace):
             content = f.read()
             
         ext = os.path.splitext(source_file_path)[1].lower()
+        dir_path = os.path.dirname(source_file_path)
         
         # 1. Quét JS/TS/JSX
         if ext in [".js", ".jsx", ".ts", ".tsx"]:
-            # Nhận diện: require('./relative/path') hoặc import ... from './relative/path'
+            # Remove comments to avoid false matches in comments
+            content_no_comments = re.sub(r"/\*.*?\*/|//.*?$", "", content, flags=re.MULTILINE | re.DOTALL)
             pattern_require = r"require\s*\(\s*['\"]([^'\"]+)['\"]\s*\)"
             pattern_import = r"from\s*['\"]([^'\"]+)['\"]"
             
-            paths = re.findall(pattern_require, content) + re.findall(pattern_import, content)
+            paths = re.findall(pattern_require, content_no_comments) + re.findall(pattern_import, content_no_comments)
             
-            # Giải quyết đường dẫn tương đối
-            dir_path = os.path.dirname(source_file_path)
             for p in paths:
                 if p.startswith("."):
-                    # Thử giải quyết đường dẫn tương đối
                     dep_abs = os.path.abspath(os.path.join(dir_path, p))
-                    # Thử thêm các extension phổ biến nếu thiếu
-                    for suffix in ["", ".js", ".jsx", ".ts", ".tsx"]:
-                        test_path = dep_abs + suffix
-                        if os.path.exists(test_path):
+                    possible_paths = [
+                        dep_abs,
+                        dep_abs + ".js",
+                        dep_abs + ".jsx",
+                        dep_abs + ".ts",
+                        dep_abs + ".tsx",
+                        os.path.join(dep_abs, "index.js"),
+                        os.path.join(dep_abs, "index.jsx")
+                    ]
+                    for test_path in possible_paths:
+                        if os.path.exists(test_path) and os.path.isfile(test_path):
                             rel = os.path.relpath(test_path, abs_workspace).replace("\\", "/")
                             dependencies.append(rel)
                             break
                             
         # 2. Quét Python
         elif ext == ".py":
-            pattern_import1 = r"^\s*import\s+(\w+)"
-            pattern_import2 = r"^\s*from\s+(\w+)\s+import"
-            
-            modules = re.findall(pattern_import1, content, re.MULTILINE) + re.findall(pattern_import2, content, re.MULTILINE)
-            
-            dir_path = os.path.dirname(source_file_path)
-            for m in modules:
-                test_path1 = os.path.join(dir_path, m + ".py")
-                if os.path.exists(test_path1):
-                    rel = os.path.relpath(test_path1, abs_workspace).replace("\\", "/")
-                    dependencies.append(rel)
+            dependencies = get_python_dependencies(content, dir_path, abs_workspace)
     except Exception as e:
         print(f"[WARNING] Không thể phân tích dependency cho {source_file_path}: {e}")
         
@@ -84,19 +146,28 @@ def load_context(source_file_path, workspace_root=None):
     if not workspace_root:
         workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
-    # Define paths
-    context_map_path = os.path.join(workspace_root, "agent_harness", "live_context", "context_map.json")
-    
-    abs_source = os.path.abspath(source_file_path)
     abs_workspace = os.path.abspath(workspace_root)
+    abs_source = os.path.abspath(source_file_path)
     if not abs_source.startswith(abs_workspace) and not os.path.isabs(source_file_path):
         abs_source = os.path.abspath(os.path.join(abs_workspace, source_file_path))
+    
+    # Security Guard: Path Traversal Check
+    if not abs_source.startswith(abs_workspace):
+        print(f"[ERROR] Đường dẫn file '{source_file_path}' nằm ngoài ranh giới workspace cho phép.")
+        sys.exit(1)
+        
+    # Input Validation: Is it a valid file?
+    if not os.path.isfile(abs_source):
+        print(f"[ERROR] Đường dẫn '{source_file_path}' không phải là một tệp tin hợp lệ hoặc không tồn tại.")
+        sys.exit(1)
+        
     rel_source_path = os.path.relpath(abs_source, abs_workspace).replace("\\", "/")
     
     sanitized_filename = rel_source_path.replace("/", "_").replace("\\", "_").replace(".", "_") + ".context.md"
     live_context_path = os.path.join(workspace_root, "agent_harness", "live_context", "cache", sanitized_filename)
     
     # 1. Read context_map.json configuration
+    context_map_path = os.path.join(workspace_root, "agent_harness", "live_context", "context_map.json")
     if not os.path.exists(context_map_path):
         print(f"[ERROR] Không tìm thấy file cấu hình tại {context_map_path}")
         sys.exit(1)
@@ -120,15 +191,19 @@ def load_context(source_file_path, workspace_root=None):
             "spec_file": "facepost_00_shared_types.md"
         }
         
-    # 3. Dynamic Dependency Spec Resolution
+    # 3. Dynamic Dependency Spec Resolution with Deduplication
     dep_specs = []
+    seen_spec_ids = set([main_mapping["spec_id"], "Spec 00"])
     dep_files = get_file_dependencies(abs_source, abs_workspace)
     for dep_file in dep_files:
         mapping = find_spec_for_file(dep_file, mappings)
-        if mapping and mapping["spec_id"] not in [main_mapping["spec_id"], "Spec 00"]:
-            dep_specs.append(mapping)
+        if mapping:
+            s_id = mapping.get("spec_id")
+            if s_id and s_id not in seen_spec_ids:
+                seen_spec_ids.add(s_id)
+                dep_specs.append(mapping)
             
-    # 4. Aggregate spec contents (Full Spec Hydration for Antigravity 2.0)
+    # 4. Aggregate spec contents (Full Spec Hydration)
     spec_sections = []
     
     # - Nạp Spec 00 (Hiến pháp shared types)
@@ -141,7 +216,7 @@ def load_context(source_file_path, workspace_root=None):
         main_spec_path = os.path.join(abs_workspace, specs_dir, main_mapping["spec_file"])
         spec_sections.append(f"### 🎯 [PRIMARY MODULE SPEC] {main_mapping['spec_id']} - {main_mapping['spec_file']}\n\n" + read_file_safe(main_spec_path))
         
-    # - Nạp Spec của các file dependencies liên đới
+    # - Nạp Spec của các file dependencies liên đới (đã lọc trùng)
     for dep in dep_specs:
         dep_path = os.path.join(abs_workspace, specs_dir, dep["spec_file"])
         if os.path.exists(dep_path):
@@ -175,11 +250,9 @@ def load_context(source_file_path, workspace_root=None):
 3. Chú ý các nguyên tắc tối ưu hóa SQLite (WAL mode) khi thay đổi logic DB.
 """
 
-    # 6. Overwrite the specific cache context file
+    # 6. Overwrite the specific cache context file atomically
     try:
-        os.makedirs(os.path.dirname(live_context_path), exist_ok=True)
-        with open(live_context_path, "w", encoding="utf-8") as f:
-            f.write(live_markdown)
+        write_file_atomic(live_context_path, live_markdown, encoding="utf-8")
         print(f"[SUCCESS] Đã nạp thành công ngữ cảnh liên đới đa chiều vào cache file.")
         print(f"[CONTEXT_FILE] {os.path.abspath(live_context_path)}")
     except Exception as e:
