@@ -54,7 +54,9 @@
         "dashboard/src/routes/content.js",
         "dashboard/src/services/cleanupService.js",
         "dashboard/src/services/autoUpdater.js",
-        "dashboard/src/services/backupManager.js"
+        "dashboard/src/services/backupManager.js",
+        "dashboard/src/routes/logs.js",
+        "dashboard/src/utils/crypto.js"
       ]
     },
     {
