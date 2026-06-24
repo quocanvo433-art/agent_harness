@@ -255,6 +255,11 @@ def load_context(source_file_path, workspace_root=None):
         write_file_atomic(live_context_path, live_markdown, encoding="utf-8")
         print(f"[SUCCESS] Đã nạp thành công ngữ cảnh liên đới đa chiều vào cache file.")
         print(f"[CONTEXT_FILE] {os.path.abspath(live_context_path)}")
+        
+        # Also update the main live_context.md at the root of live_context
+        main_live_context = os.path.join(workspace_root, "agent_harness", "live_context", "live_context.md")
+        write_file_atomic(main_live_context, live_markdown, encoding="utf-8")
+        print(f"[SUCCESS] Đã ghi đè tệp tin live_context.md chính tại: {os.path.abspath(main_live_context)}")
     except Exception as e:
         print(f"[ERROR] Lỗi khi ghi file context: {e}")
         sys.exit(1)
