@@ -261,9 +261,25 @@ async function main() {
       throw new Error('Không tìm thấy trang Renderer (GUI) của Electron.');
     }
 
-    console.log('[E2E Runner] Đang kiểm tra giao diện...');
+    console.log('[E2E Runner] Đang kiểm tra giao diện và chụp ảnh các tab...');
     await mainPage.screenshot({ path: path.join(SCREENSHOTS_DIR, 'electron_main_gui.png') });
-    console.log('[E2E Runner] Đã chụp màn hình giao diện GUI.');
+    
+    const tabs = ['Overview', 'Campaigns', 'Accounts & Health', 'Settings', 'Coffee (Donate)'];
+    for (const tabLabel of tabs) {
+      console.log(`[E2E Runner] Click chuyển sang tab: ${tabLabel}`);
+      await mainPage.evaluate((label) => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const btn = buttons.find(b => {
+          const text = b.innerText || '';
+          return text.toLowerCase().includes(label.toLowerCase());
+        });
+        if (btn) btn.click();
+      }, tabLabel);
+      await new Promise(r => setTimeout(r, 1500)); // Chờ hiệu ứng chuyển tab
+      const filename = `electron_${tabLabel.toLowerCase().replace(/[^a-z0-9]/g, '_')}.png`;
+      await mainPage.screenshot({ path: path.join(SCREENSHOTS_DIR, filename) });
+      console.log(`[E2E Runner] Đã chụp màn hình tab ${tabLabel} -> ${filename}`);
+    }
 
     // Đọc active port từ sandbox userDataPath
     const userDataPath = path.join(APP_DATA_TEMP, 'hermes-facepost-desktop');
