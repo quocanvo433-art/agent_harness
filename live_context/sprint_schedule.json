@@ -62,7 +62,12 @@
   },
   "6": {
     "title": "Tuần 6 — Electron Desktop, CWS Diplomat & CI/CD",
-    "specs": ["facepost_09_hybrid_extension.md", "facepost_10_desktop_packaging.md"],
+    "specs": [
+      "facepost_09_hybrid_extension.md",
+      "facepost_10_desktop_packaging.md",
+      "facepost_12_testing_qa.md",
+      "facepost_13_telemetry_diagnostics.md"
+    ],
     "qa_gate": "QA-06: 5 profiles × 12h, Vision LLM verify",
     "tasks": [
       "Build Electron main process, preload & tray integrations (hermes-desktop/*.js)",
