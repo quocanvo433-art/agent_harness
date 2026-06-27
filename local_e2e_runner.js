@@ -341,67 +341,41 @@ async function main() {
       errorDetails.push(`Lỗi kết nối REST API: ${e.message}`);
     }
 
-    // Instead of launching mock Chrome (which is blocked from loading unpacked extensions by branded Chrome 137+),
-    // we run a programmatic mock extension client to verify the WebSocket authentication handshake.
-    console.log('[E2E Runner] Khởi chạy Mock Extension Client để bắt tay WebSocket...');
-    const WebSocket = require('ws');
-    const crypto = require('crypto');
-    const wsClient = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+    // GAP-Harness-01: Instead of using a programmatic mock WebSocket client that bypasses the extension runtime context,
+    // we trigger the real Chrome instance using the /api/checkpoint/respawn API.
+    // This launches Chrome with the extension, syncs credentials, and lets the actual extension perform the HMAC handshake.
+    console.log('[E2E Runner] Khởi chạy Chrome thực tế qua API để kiểm tra kết nối Extension...');
+    let extensionConnected = false;
+    try {
+      // Gọi API respawn để mở trình duyệt Chrome
+      const respawnRes = await axios.post(`http://127.0.0.1:${port}/api/checkpoint/respawn`, {
+        accountId: 'fb_mock_acc_1001'
+      });
+      console.log('[E2E Runner] API Respawn phản hồi:', respawnRes.data);
 
-    let wsAuthenticated = false;
-
-    wsClient.on('open', () => {
-      console.log('[E2E Runner] Mock Client: Kết nối thành công. Đang gửi gói HELLO...');
-      const nonce = crypto.randomUUID();
-      const timestamp = Date.now();
-      const secret = 'aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899';
-      
-      const signature = crypto
-          .createHmac('sha256', Buffer.from(secret, 'hex'))
-          .update(`${nonce}:${timestamp}`)
-          .digest('hex');
-
-      const helloMsg = {
-        type: 'HELLO',
-        accountId: 'fb_mock_acc_1001',
-        nonce,
-        timestamp,
-        signature,
-        extensionVersion: '2.2.0',
-        extension_mode: 'GHOST',
-        extension_id: 'mock-e2e-client'
-      };
-
-      wsClient.send(JSON.stringify(helloMsg));
-    });
-
-    wsClient.on('message', (rawData) => {
-      try {
-        const msg = JSON.parse(rawData.toString());
-        console.log('[E2E Runner] Mock Client nhận:', msg);
-        if (msg.type === 'WELCOME') {
-          wsAuthenticated = true;
-          console.log('[E2E Runner] Mock Client: Bắt tay WebSocket thành công! (WELCOME)');
+      if (respawnRes.data.success) {
+        console.log('[E2E Runner] Đang kiểm tra trạng thái WebSocket của Extension trong 20 giây...');
+        // Poll /api/accounts to check if ws_connected becomes 1
+        for (let i = 0; i < 20; i++) {
+          await new Promise(r => setTimeout(r, 1000));
+          const accountsRes = await axios.get(`http://127.0.0.1:${port}/api/accounts`);
+          const mockAcc = accountsRes.data.data.find(a => a.account_id === 'fb_mock_acc_1001');
+          if (mockAcc && mockAcc.ws_connected === 1) {
+            extensionConnected = true;
+            console.log(`[E2E Runner] Bắt tay WebSocket thành công! Extension thật đã Online (Sau ${i + 1} giây).`);
+            break;
+          }
         }
-      } catch (e) {
-        console.warn('[E2E Runner] Mock Client: Lỗi parse message:', e.message);
+      } else {
+        errorDetails.push('API Respawn trả về success: false');
       }
-    });
-
-    wsClient.on('error', (err) => {
-      console.error('[E2E Runner] Mock Client WebSocket Error:', err.message);
-    });
-
-    console.log('[E2E Runner] Chờ WebSocket kết nối và bắt tay...');
-    await new Promise(r => setTimeout(r, 6000));
-
-    if (wsClient) {
-      wsClient.close();
+    } catch (e) {
+      errorDetails.push(`Lỗi khi gọi API kích hoạt trình duyệt: ${e.message}`);
     }
 
-    if (!wsAuthenticated) {
+    if (!extensionConnected) {
       testSuccess = false;
-      errorDetails.push('Không nhận được WELCOME từ server, bắt tay WebSocket thất bại.');
+      errorDetails.push('Bắt tay WebSocket thất bại: Extension thật không thể Online qua WebSocket.');
     }
 
     // Đọc log của Express Server xem có lỗi gì không
